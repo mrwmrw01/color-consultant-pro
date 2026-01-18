@@ -1,0 +1,277 @@
+
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/paint_consultant_app/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  firstName     String?
+  lastName      String?
+  companyName   String?
+  password      String?
+  role          String    @default("consultant")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+  projects Project[]
+  clients  Client[]
+
+  @@map("users")
+}
+
+model Client {
+  id          String   @id @default(cuid())
+  name        String   // "Elite Property Management LLC" or "David & Sarah Martinez"
+  contactName String?  // Primary contact person
+  email       String?
+  phone       String?
+  type        String?  // individual, business, property_management, contractor
+  notes       String?  @db.Text
+  status      String   @default("active") // active, inactive, archived
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String   // Consultant who owns this client
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  properties Property[] // ONE CLIENT HAS MANY PROPERTIES
+
+  @@unique([userId, name])
+  @@map("clients")
+}
+
+model Property {
+  id          String   @id @default(cuid())
+  name        String?  // Optional: "Primary Residence", "Oak Street Building"
+  address     String   // REQUIRED: Full address
+  city        String?
+  state       String?
+  zipCode     String?
+  type        String?  // residential, commercial, multi_family, vacation, investment
+
+  // Property-specific contacts (e.g., building superintendent)
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+
+  notes     String?  @db.Text
+  status    String   @default("active") // active, under_contract, sold, archived
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clientId String   // BELONGS TO ONE CLIENT
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  projects Project[] // ONE PROPERTY HAS MANY PROJECTS
+
+  @@unique([clientId, address]) // Unique addresses per client
+  @@map("properties")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  
+  // NEW: Reference to property (3-tier hierarchy)
+  propertyId  String?  // Made optional for migration phase
+  property    Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  // OLD: Direct client fields (deprecated, kept for migration)
+  clientName  String?  // Made optional for migration
+  clientEmail String?
+  clientPhone String?
+  address     String?
+  
+  status      String   @default("active") // active, completed, archived
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photos   Photo[]
+  rooms    Room[]
+  synopsis ColorSynopsis[]
+
+  @@unique([userId, name])
+  @@map("projects")
+}
+
+model Room {
+  id          String   @id @default(cuid())
+  name        String   // living room, bedroom, kitchen, etc.
+  description String?
+  roomType    String?   // parent room type
+  subType     String?  // sub-type within the parent
+  projectId   String?  // Made optional - rooms are now global
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project         Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  photos          Photo[]
+  annotations     Annotation[]
+  synopsisEntries SynopsisEntry[]
+
+  @@unique([name]) // Ensure room names are unique globally
+  @@map("rooms")
+}
+
+model Photo {
+  id                String   @id @default(cuid())
+  filename          String
+  originalFilename  String
+  cloud_storage_path String   // S3 key/path for original photo
+  annotated_photo_path String?  // S3 key/path for annotated version (if exists)
+  mimeType          String
+  size              Int
+  width             Int?
+  height            Int?
+  projectId         String
+  roomId            String?
+  description       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  room        Room?        @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  annotations Annotation[]
+
+  @@map("photos")
+}
+
+model Annotation {
+  id          String   @id @default(cuid())
+  photoId     String
+  roomId      String?
+  type        String   // drawing, text, color_tag
+  data        Json     // drawing paths, text content, coordinates, etc.
+  surfaceType String?  // wall, trim, ceiling, door, window, etc.
+  colorId     String?
+  productLine String?  // e.g., "Cashmere Interior", "Duration Interior"
+  sheen       String?  // e.g., "Flat", "Eggshell", "Satin", "Semi-Gloss", "Gloss"
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  photo Photo @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  room  Room? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  color Color? @relation(fields: [colorId], references: [id])
+
+  @@map("annotations")
+}
+
+model Color {
+  id           String   @id @default(cuid())
+  colorCode    String   @unique // e.g., "SW 7005", "BM OC-17"
+  name         String   // e.g., "Extra White", "Cloud White"
+  manufacturer String   // e.g., "Sherwin Williams", "Benjamin Moore", "Custom Paint Co"
+  rgbColor     String?  // RGB values (e.g., "238, 237, 231")
+  hexColor     String?  // for display purposes
+  colorFamily  String?  // color family/category
+  notes        String?
+  usageCount   Int      @default(0) // track how many times used
+  firstUsedAt  DateTime? // when first used in a project
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  annotations     Annotation[]
+  synopsisEntries SynopsisEntry[]
+  availability    ColorAvailability[] // products and sheens this color is available in
+
+  @@map("colors")
+}
+
+model ColorAvailability {
+  id          String   @id @default(cuid())
+  colorId     String
+  productLine String   // e.g., "Cashmere Interior", "Duration Interior"
+  sheen       String   // e.g., "Flat", "Eggshell", "Satin", "Semi-Gloss", "Gloss"
+  createdAt   DateTime @default(now())
+
+  color Color @relation(fields: [colorId], references: [id], onDelete: Cascade)
+
+  @@unique([colorId, productLine, sheen])
+  @@map("color_availability")
+}
+
+model ColorSynopsis {
+  id        String   @id @default(cuid())
+  projectId String
+  title     String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  entries SynopsisEntry[]
+
+  @@map("color_synopsis")
+}
+
+model SynopsisEntry {
+  id            String   @id @default(cuid())
+  synopsisId    String
+  roomId        String
+  colorId       String
+  productLine   String   // e.g., "Cashmere Interior", "Duration Interior"
+  sheen         String   // e.g., "Flat", "Eggshell", "Satin", "Semi-Gloss", "Gloss"
+  surfaceType   String   // wall, trim, ceiling, etc.
+  surfaceArea   String?  // description like "North Wall", "All Trim"
+  quantity      String?  // estimated coverage
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  synopsis  ColorSynopsis @relation(fields: [synopsisId], references: [id], onDelete: Cascade)
+  room      Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  color     Color         @relation(fields: [colorId], references: [id])
+
+  @@map("synopsis_entries")
+}

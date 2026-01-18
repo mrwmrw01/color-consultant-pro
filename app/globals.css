@@ -1,0 +1,167 @@
+
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@layer base {
+  :root {
+    /* Color Guru Design inspired color system */
+    --background: 0 0% 98%;           /* Soft off-white #fafafa */
+    --foreground: 28 95% 13%;         /* Deep brown #412501 */
+    --card: 0 0% 100%;                /* White cards for contrast */
+    --card-foreground: 28 95% 13%;    /* Deep brown text */
+    --popover: 0 0% 100%;
+    --popover-foreground: 28 95% 13%;
+    --primary: 28 98% 39%;            /* Burnt orange #c47004 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 28 100% 46%;         /* Medium orange for accents */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 96%;                /* Soft gray for muted areas */
+    --muted-foreground: 28 70% 25%;   /* Medium brown #834b03 */
+    --accent: 35 48% 64%;             /* Tan/beige gold #d8a96e */
+    --accent-foreground: 28 95% 13%;  /* Deep brown */
+    --destructive: 0 84% 60%;         /* Soft red */
+    --destructive-foreground: 0 0% 100%;
+    --border: 35 41% 82%;             /* Light tan #ebca9e */
+    --input: 0 0% 96%;
+    --ring: 28 98% 39%;               /* Burnt orange ring */
+    --radius: 0.5rem;
+    
+    /* Color Guru Design palette */
+    --guru-orange: 28 98% 39%;        /* Burnt Orange #c47004 */
+    --guru-tan: 35 48% 64%;           /* Tan Gold #d8a96e */
+    --guru-light-tan: 35 41% 82%;     /* Light Tan/Cream #ebca9e */
+    --guru-blue-gray: 197 30% 68%;    /* Soft Blue-Gray #97bcc8 */
+    --guru-brown: 28 70% 25%;         /* Medium Brown #834b03 */
+    --guru-espresso: 28 95% 13%;      /* Deep Espresso #412501 */
+    --guru-off-white: 0 0% 98%;       /* Off White #fafafa */
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Paint Consultant specific styles */
+.annotation-canvas {
+  cursor: crosshair;
+}
+
+.annotation-canvas.drawing {
+  cursor: crosshair;
+}
+
+.annotation-canvas.text {
+  cursor: text;
+}
+
+.color-picker-preview {
+  @apply w-8 h-8 rounded-full border-2 border-border shadow-sm;
+}
+
+.project-card {
+  @apply bg-card border border-border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow;
+}
+
+.photo-thumbnail {
+  @apply aspect-square rounded-lg overflow-hidden bg-muted;
+}
+
+.mobile-friendly {
+  @apply touch-manipulation;
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  @apply w-2;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-muted rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full hover:bg-border/80;
+}
+
+/* Annotation styles */
+.annotation-red {
+  stroke: #dc2626;
+  stroke-width: 3;
+  fill: none;
+}
+
+.annotation-text {
+  @apply text-sm font-medium;
+  fill: #dc2626;
+}
+
+.color-tag {
+  @apply absolute transform -translate-x-1/2 -translate-y-1/2 
+         bg-red-600 text-white text-xs px-2 py-1 rounded-full 
+         shadow-lg pointer-events-none;
+}
+
+/* Enhanced contrast for better readability with new color scheme */
+/* Improved badge styling */
+[class*="badge"],
+.badge {
+  font-weight: 600 !important;
+}
+
+/* Ensure visible text colors throughout the app - but allow inline styles to override */
+body {
+  color: hsl(28 95% 13%);
+}
+
+/* Only target elements that don't have inline styles or background classes */
+h1:not([style]), h2:not([style]), h3:not([style]), 
+h4:not([style]), h5:not([style]), h6:not([style]) {
+  color: hsl(28 95% 13%);
+}
+
+p:not([style]):not([class*="bg-"]), 
+span:not([style]):not([class*="bg-"]):not([class*="badge"]):not([class*="text-"]) {
+  color: hsl(28 95% 13%);
+}
+
+/* Button text - but respect background classes */
+button:not([class*="bg-primary"]):not([class*="bg-red"]):not([class*="bg-orange"]):not([class*="bg-destructive"]):not([style]) {
+  color: hsl(28 95% 13%);
+}
+
+/* Links should be clickable */
+a {
+  cursor: pointer;
+}
+
+button, a {
+  font-weight: 500;
+}
