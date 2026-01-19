@@ -2,7 +2,6 @@
 generator client {
     provider = "prisma-client-js"
     binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
-    output = "/home/ubuntu/paint_consultant_app/app/node_modules/.prisma/client"
 }
 
 datasource db {
@@ -48,6 +47,10 @@ model User {
   companyName   String?
   password      String?
   role          String    @default("consultant")
+
+  // Subscription tier for AI budget management
+  tier          String    @default("free") // free, pro, enterprise
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -164,20 +167,33 @@ model Room {
 }
 
 model Photo {
-  id                String   @id @default(cuid())
-  filename          String
-  originalFilename  String
-  cloud_storage_path String   // S3 key/path for original photo
-  annotated_photo_path String?  // S3 key/path for annotated version (if exists)
-  mimeType          String
-  size              Int
-  width             Int?
-  height            Int?
-  projectId         String
-  roomId            String?
-  description       String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  filename              String
+  originalFilename      String
+
+  // Multiple image sizes for cost optimization
+  cloud_storage_path    String   // Large (2048x2048 WebP)
+  medium_path           String?  // 800x800 WebP for detail view
+  thumbnail_path        String?  // 200x200 WebP for galleries
+  annotated_photo_path  String?  // Annotated version (if exists)
+
+  // Optional: blur placeholder for progressive loading
+  blur_placeholder      String?  @db.Text
+
+  mimeType              String
+  size                  Int      // Original file size
+  width                 Int?
+  height                Int?
+
+  // Storage optimization metadata
+  optimized_size        Int?     // Total size of all optimized versions
+  storage_savings       Float?   // Percentage saved vs original
+
+  projectId             String
+  roomId                String?
+  description           String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   room        Room?        @relation(fields: [roomId], references: [id], onDelete: SetNull)

@@ -91,9 +91,9 @@ export function PhotoCard({ photo, viewMode, globalRooms }: PhotoCardProps) {
   useEffect(() => {
     const fetchImageUrl = async () => {
       try {
-        // Add cache-busting parameter to ensure we always get the latest version
-        const cacheBuster = Date.now()
-        const response = await fetch(`/api/photos/${photo.id}/url?t=${cacheBuster}`)
+        // Request thumbnail for grid, medium for list view
+        const size = viewMode === 'grid' ? 'thumbnail' : 'medium'
+        const response = await fetch(`/api/photos/${photo.id}/url?size=${size}`)
         if (response.ok) {
           const data = await response.json()
           setImageUrl(data.url)
@@ -106,7 +106,7 @@ export function PhotoCard({ photo, viewMode, globalRooms }: PhotoCardProps) {
     }
 
     fetchImageUrl()
-  }, [photo.id, photo.annotated_photo_path])
+  }, [photo.id, photo.annotated_photo_path, viewMode])
 
   const formatDate = (date: string | Date) => {
     return new Date(date).toLocaleDateString("en-US", {

@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { uploadFile, deleteFile } from "@/lib/s3"
+import { invalidateUrl } from "@/lib/s3-url-cache"
 
 export const dynamic = "force-dynamic"
 
@@ -49,6 +50,9 @@ export async function POST(
 
     // Delete old annotated photo if it exists
     if (photo.annotated_photo_path) {
+      // Invalidate cache for old annotated photo
+      invalidateUrl(photo.annotated_photo_path)
+
       try {
         await deleteFile(photo.annotated_photo_path)
       } catch (error) {
@@ -60,13 +64,16 @@ export async function POST(
     // Update photo record with new annotated photo path
     const updatedPhoto = await prisma.photo.update({
       where: { id: params.photoId },
-      data: { 
+      data: {
         annotated_photo_path: cloud_storage_path,
         updatedAt: new Date()
       }
     })
 
-    return NextResponse.json({ 
+    // Invalidate cache for the new annotated photo
+    invalidateUrl(cloud_storage_path)
+
+    return NextResponse.json({
       success: true,
       annotated_photo_path: cloud_storage_path,
       photo: updatedPhoto
@@ -109,6 +116,9 @@ export async function DELETE(
 
     // Delete annotated photo from S3 if it exists
     if (photo.annotated_photo_path) {
+      // Invalidate cache
+      invalidateUrl(photo.annotated_photo_path)
+
       try {
         await deleteFile(photo.annotated_photo_path)
       } catch (error) {
@@ -119,13 +129,13 @@ export async function DELETE(
     // Update photo record to remove annotated photo path
     const updatedPhoto = await prisma.photo.update({
       where: { id: params.photoId },
-      data: { 
+      data: {
         annotated_photo_path: null,
         updatedAt: new Date()
       }
     })
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       photo: updatedPhoto
     })

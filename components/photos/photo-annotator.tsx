@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { 
+import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
@@ -22,7 +22,8 @@ import {
   Plus,
   Copy,
   TrendingUp,
-  Clock
+  Clock,
+  Sparkles
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -95,6 +96,10 @@ export function PhotoAnnotator({
   const [showCopyDialog, setShowCopyDialog] = useState(false)
   const [annotationSuggestions, setAnnotationSuggestions] = useState<any[]>([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [aiSuggestions, setAISuggestions] = useState<any[]>([])
+  const [loadingAISuggestions, setLoadingAISuggestions] = useState(false)
+  const [showAISuggestionsDialog, setShowAISuggestionsDialog] = useState(false)
+  const [ralphQuote, setRalphQuote] = useState("")
   const [zoomLevel, setZoomLevel] = useState(100) // Zoom percentage: 50% to 200%
   const [editForm, setEditForm] = useState({
     colorId: '',
@@ -299,6 +304,74 @@ export function PhotoAnnotator({
     loadAnnotationSuggestions()
   }
 
+  // Get AI color suggestions
+  const handleGetAISuggestions = async () => {
+    setLoadingAISuggestions(true)
+    try {
+      const context = {
+        roomType: photo.room?.roomType || photo.room?.name || "General",
+        roomSubtype: photo.room?.subType,
+        existingColors: annotations
+          .filter(a => a.color)
+          .map(a => ({
+            colorCode: a.color.colorCode,
+            colorName: a.color.name,
+            surfaceType: a.surfaceType
+          })),
+        propertyType: photo.project?.property?.type
+      }
+
+      const response = await fetch('/api/ai/suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(context)
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setAISuggestions(data.suggestions)
+        setRalphQuote(data.ralphQuote)
+        setShowAISuggestionsDialog(true)
+      } else if (response.status === 429) {
+        toast.error("Rate limit exceeded. Try again in an hour!")
+      } else if (response.status === 402) {
+        const data = await response.json()
+        toast.error("AI budget exceeded. Upgrade your plan!")
+        // Still show fallback suggestions if available
+        if (data.suggestions) {
+          setAISuggestions(data.suggestions)
+          setRalphQuote(data.ralphQuote || "Here are some basic suggestions!")
+          setShowAISuggestionsDialog(true)
+        }
+      } else {
+        toast.error("Couldn't get AI suggestions right now")
+      }
+    } catch (error) {
+      console.error("Error getting AI suggestions:", error)
+      toast.error("Failed to get AI suggestions")
+    } finally {
+      setLoadingAISuggestions(false)
+    }
+  }
+
+  // Apply AI suggestion
+  const handleApplyAISuggestion = async (suggestion: any) => {
+    // Find the color in the colors list
+    let colorId = colors.find(c => c.colorCode === suggestion.colorCode)?.id
+
+    // If color doesn't exist, we need to add it
+    if (!colorId) {
+      toast.error(`Color ${suggestion.colorCode} not found in catalog. Please add it first.`)
+      return
+    }
+
+    // Apply the suggestion
+    setSelectedColorId(colorId)
+    setSelectedSurface(suggestion.surfaceType)
+    setShowAISuggestionsDialog(false)
+    toast.success(`Applied: ${suggestion.colorName} - ${suggestion.surfaceType}`)
+  }
+
   // Zoom control functions
   const handleZoomIn = () => {
     setZoomLevel(prev => Math.min(prev + 10, 200))
@@ -348,8 +421,8 @@ export function PhotoAnnotator({
   useEffect(() => {
     const fetchImageUrl = async () => {
       try {
-        // Always get the original photo for annotation
-        const response = await fetch(`/api/photos/${photo.id}/url?original=true`)
+        // Request large size (2048x2048 optimized) for annotation
+        const response = await fetch(`/api/photos/${photo.id}/url?size=large`)
         if (response.ok) {
           const data = await response.json()
           setImageUrl(data.url)
@@ -1044,6 +1117,28 @@ export function PhotoAnnotator({
                 >
                   <Copy className="h-3.5 w-3.5 mr-2" />
                   Copy from Recent Annotations
+                </Button>
+
+                {/* Get AI Suggestions Button */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGetAISuggestions}
+                  className="w-full h-9 text-xs"
+                  disabled={loadingAISuggestions}
+                >
+                  {loadingAISuggestions ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                      Ralph is thinking...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5 mr-2" />
+                      Get AI Suggestions
+                    </>
+                  )}
                 </Button>
 
                 {/* Color Selection with Browse and Add Custom Color Buttons */}
@@ -1851,6 +1946,84 @@ export function PhotoAnnotator({
                   <div className="mt-3 pt-3 border-t text-center">
                     <p className="text-xs text-blue-600 font-medium">
                       Click to copy these details →
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Suggestions Dialog */}
+      <Dialog open={showAISuggestionsDialog} onOpenChange={setShowAISuggestionsDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              Ralph Wiggum AI Suggestions
+            </DialogTitle>
+            {ralphQuote && (
+              <p className="text-sm text-gray-500 mt-2">
+                {ralphQuote}
+              </p>
+            )}
+          </DialogHeader>
+
+          {aiSuggestions.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No suggestions available</p>
+              <p className="text-sm text-gray-400 mt-2">
+                Try adding some existing colors first
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {aiSuggestions.map((suggestion, index) => (
+                <div
+                  key={index}
+                  className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => handleApplyAISuggestion(suggestion)}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 space-y-2">
+                      {/* Color Info */}
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-8 h-8 rounded border shadow-sm bg-gray-200"
+                        />
+                        <div>
+                          <p className="font-medium text-sm">{suggestion.colorName}</p>
+                          <p className="text-xs text-gray-500">
+                            {suggestion.manufacturer} • {suggestion.colorCode}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Suggestion Details */}
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-gray-500">Surface:</span>
+                          <span className="ml-1 font-medium">{suggestion.surfaceType}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Confidence:</span>
+                          <span className="ml-1 font-medium capitalize">{suggestion.confidence}</span>
+                        </div>
+                      </div>
+
+                      {/* Reason */}
+                      <div className="text-xs">
+                        <span className="text-gray-500">Why:</span>
+                        <p className="mt-1 text-gray-700">{suggestion.reason}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Click to Apply Hint */}
+                  <div className="mt-3 pt-3 border-t text-center">
+                    <p className="text-xs text-blue-600 font-medium">
+                      Click to apply this suggestion →
                     </p>
                   </div>
                 </div>

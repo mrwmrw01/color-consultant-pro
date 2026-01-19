@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { deleteFile } from "@/lib/s3"
+import { invalidateUrl } from "@/lib/s3-url-cache"
 
 export async function PATCH(
   request: NextRequest,
@@ -122,6 +123,20 @@ export async function DELETE(
 
     console.log(`Deleting photo ${params.photoId}`)
 
+    // Invalidate cached URLs for all photo sizes
+    if (photo.cloud_storage_path) {
+      invalidateUrl(photo.cloud_storage_path)
+    }
+    if (photo.medium_path) {
+      invalidateUrl(photo.medium_path)
+    }
+    if (photo.thumbnail_path) {
+      invalidateUrl(photo.thumbnail_path)
+    }
+    if (photo.annotated_photo_path) {
+      invalidateUrl(photo.annotated_photo_path)
+    }
+
     // Delete from S3 first
     if (photo.cloud_storage_path) {
       try {
@@ -130,6 +145,31 @@ export async function DELETE(
       } catch (s3Error) {
         console.error("Error deleting file from S3:", s3Error)
         // Continue with database deletion even if S3 deletion fails
+      }
+    }
+
+    // Delete medium and thumbnail from S3
+    if (photo.medium_path) {
+      try {
+        await deleteFile(photo.medium_path)
+      } catch (s3Error) {
+        console.error("Error deleting medium file from S3:", s3Error)
+      }
+    }
+    if (photo.thumbnail_path) {
+      try {
+        await deleteFile(photo.thumbnail_path)
+      } catch (s3Error) {
+        console.error("Error deleting thumbnail file from S3:", s3Error)
+      }
+    }
+
+    // Delete annotated photo from S3
+    if (photo.annotated_photo_path) {
+      try {
+        await deleteFile(photo.annotated_photo_path)
+      } catch (s3Error) {
+        console.error("Error deleting annotated file from S3:", s3Error)
       }
     }
 
