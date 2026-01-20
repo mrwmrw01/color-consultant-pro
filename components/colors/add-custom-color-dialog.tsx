@@ -34,39 +34,15 @@ interface AddCustomColorDialogProps {
 export function AddCustomColorDialog({ children, onColorAdded }: AddCustomColorDialogProps) {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [existingColorFamilies, setExistingColorFamilies] = useState<string[]>([])
-  
+
   const [formData, setFormData] = useState({
     colorCode: "",
     name: "",
     manufacturer: "",
     rgbColor: "",
     hexColor: "#ffffff",
-    colorFamily: "",
     notes: ""
   })
-
-  // Fetch existing color families
-  useEffect(() => {
-    const fetchColorFamilies = async () => {
-      try {
-        const response = await fetch('/api/colors')
-        if (response.ok) {
-          const colors = await response.json()
-          const families = Array.from(
-            new Set(colors.map((c: any) => c.colorFamily).filter(Boolean))
-          ).sort() as string[]
-          setExistingColorFamilies(families)
-        }
-      } catch (error) {
-        console.error('Error fetching color families:', error)
-      }
-    }
-
-    if (open) {
-      fetchColorFamilies()
-    }
-  }, [open])
 
   // Convert hex to RGB
   const hexToRgb = (hex: string) => {
@@ -117,7 +93,6 @@ export function AddCustomColorDialog({ children, onColorAdded }: AddCustomColorD
           manufacturer: "",
           rgbColor: "",
           hexColor: "#ffffff",
-          colorFamily: "",
           notes: ""
         })
         
@@ -238,46 +213,6 @@ export function AddCustomColorDialog({ children, onColorAdded }: AddCustomColorD
                   placeholder="e.g., 238, 237, 231"
                   value={formData.rgbColor}
                   onChange={(e) => setFormData(prev => ({ ...prev, rgbColor: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            {/* Color Family */}
-            <div className="space-y-2">
-              <Label htmlFor="colorFamily">Color Family (Optional)</Label>
-              <div className="flex gap-2">
-                <Select
-                  value={formData.colorFamily}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, colorFamily: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select or enter custom..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="White">White</SelectItem>
-                    <SelectItem value="Off-White">Off-White</SelectItem>
-                    <SelectItem value="Beige">Beige</SelectItem>
-                    <SelectItem value="Gray">Gray</SelectItem>
-                    <SelectItem value="Blue">Blue</SelectItem>
-                    <SelectItem value="Green">Green</SelectItem>
-                    <SelectItem value="Yellow">Yellow</SelectItem>
-                    <SelectItem value="Red">Red</SelectItem>
-                    <SelectItem value="Orange">Orange</SelectItem>
-                    <SelectItem value="Purple">Purple</SelectItem>
-                    <SelectItem value="Brown">Brown</SelectItem>
-                    <SelectItem value="Black">Black</SelectItem>
-                    {existingColorFamilies.map(family => (
-                      <SelectItem key={family} value={family}>
-                        {family}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  placeholder="Or type custom..."
-                  value={formData.colorFamily}
-                  onChange={(e) => setFormData(prev => ({ ...prev, colorFamily: e.target.value }))}
-                  className="flex-1"
                 />
               </div>
             </div>

@@ -123,11 +123,6 @@ export function ColorCard({ color, viewMode, onColorDeleted }: ColorCardProps) {
               </div>
               <div className="flex items-center gap-2 mb-2">
                 <p className="text-sm font-bold" style={{ color: '#111827 !important' }}>{color.manufacturer}</p>
-                {color.colorFamily && (
-                  <Badge variant="outline" className="text-xs border-gray-600 font-medium" style={{ color: '#111827 !important', backgroundColor: '#ffffff !important' }}>
-                    {color.colorFamily}
-                  </Badge>
-                )}
               </div>
               
               {color.usageCount > 0 && (

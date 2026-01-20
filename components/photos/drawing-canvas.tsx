@@ -108,14 +108,30 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(f
   const getCanvasCoordinates = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas || !isImageLoaded) return { x: 0, y: 0 }
-    
+
     const rect = canvas.getBoundingClientRect()
     const scaleX = canvas.width / rect.width
     const scaleY = canvas.height / rect.height
-    
+
     return {
       x: (event.clientX - rect.left) * scaleX,
       y: (event.clientY - rect.top) * scaleY
+    }
+  }, [isImageLoaded])
+
+  // Convert touch coordinates to canvas coordinates with proper scaling
+  const getTouchCanvasCoordinates = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current
+    if (!canvas || !isImageLoaded || event.touches.length === 0) return { x: 0, y: 0 }
+
+    const touch = event.touches[0]
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+
+    return {
+      x: (touch.clientX - rect.left) * scaleX,
+      y: (touch.clientY - rect.top) * scaleY
     }
   }, [isImageLoaded])
 
@@ -189,16 +205,15 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(f
     return null
   }, [annotations, isImageLoaded, imageToCanvasCoordinates, canvasDimensions])
 
-  const startDrawing = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-    const coords = getCanvasCoordinates(event)
-    
+  // Shared logic for starting drawing/dragging
+  const handleStart = useCallback((coords: Point) => {
     // Check if we're clicking on an existing text or colorTag annotation
     const clickedAnnotation = getAnnotationAtPoint(coords)
-    
+
     if (clickedAnnotation) {
       const annotation = clickedAnnotation.annotation
       const annotData = annotation.data || annotation
-      
+
       // If we're in pen tool mode or clicking an annotation, select it for highlighting
       if (tool.type === 'pen' || annotation.type === 'text' || annotation.type === 'colorTag') {
         // Notify parent about the selection
@@ -206,7 +221,7 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(f
           onAnnotationSelect(annotation.id)
         }
       }
-      
+
       // If it's a draggable annotation (text or colorTag), set up dragging
       if (annotation.type === 'text' || annotation.type === 'colorTag') {
         const annotCoord = imageToCanvasCoordinates(annotData.coordinates[0])
@@ -221,7 +236,7 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(f
         return
       }
     }
-    
+
     // If no annotation was clicked, proceed with drawing tools
     if (tool.type === 'pen') {
       setIsDrawing(true)
@@ -229,71 +244,81 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(f
     } else if (tool.type === 'colorTag') {
       // Create color tag annotation immediately at the clicked position
       const imageCoords = canvasToImageCoordinates(coords)
-      
+
       if (isNaN(imageCoords.x) || isNaN(imageCoords.y) || imageCoords.x < 0 || imageCoords.y < 0) {
         console.error("Invalid coordinates for color tag:", imageCoords)
         return
       }
-      
+
       onAnnotationCreate({
         type: 'colorTag',
         coordinates: [imageCoords],
-        bounds: { 
-          x: imageCoords.x, 
-          y: imageCoords.y, 
-          width: 20, 
-          height: 20 
+        bounds: {
+          x: imageCoords.x,
+          y: imageCoords.y,
+          width: 20,
+          height: 20
         }
       })
     } else if (tool.type === 'text') {
       // For text tool, request text input via dialog
       const imageCoords = canvasToImageCoordinates(coords)
-      
+
       if (isNaN(imageCoords.x) || isNaN(imageCoords.y) || imageCoords.x < 0 || imageCoords.y < 0) {
         console.error("Invalid coordinates for text annotation:", imageCoords)
         return
       }
-      
+
       if (onTextAnnotationRequest) {
         onTextAnnotationRequest({
           type: 'text',
           coordinates: [imageCoords],
-          bounds: { 
-            x: imageCoords.x, 
-            y: imageCoords.y, 
-            width: 100, 
-            height: 20 
+          bounds: {
+            x: imageCoords.x,
+            y: imageCoords.y,
+            width: 100,
+            height: 20
           }
         })
       }
     }
-  }, [tool.type, getCanvasCoordinates, canvasToImageCoordinates, onAnnotationCreate, onTextAnnotationRequest, getAnnotationAtPoint, imageToCanvasCoordinates, onAnnotationSelect])
+  }, [tool.type, canvasToImageCoordinates, onAnnotationCreate, onTextAnnotationRequest, getAnnotationAtPoint, imageToCanvasCoordinates, onAnnotationSelect])
 
-  const draw = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+  const startDrawing = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    const coords = getCanvasCoordinates(event)
+    handleStart(coords)
+  }, [getCanvasCoordinates, handleStart])
+
+  const startTouch = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
+    event.preventDefault() // Prevent scrolling while drawing
+    const coords = getTouchCanvasCoordinates(event)
+    handleStart(coords)
+  }, [getTouchCanvasCoordinates, handleStart])
+
+  // Shared logic for drawing/dragging
+  const handleMove = useCallback((coords: Point) => {
     // Handle dragging annotation
     if (draggingAnnotation) {
-      const coords = getCanvasCoordinates(event)
       setDragPosition(coords)
       return
     }
-    
+
     if (!isDrawing || tool.type !== 'pen') return
-    
+
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
     if (!canvas || !ctx) return
-    
-    const coords = getCanvasCoordinates(event)
+
     setCurrentPath(prev => {
       const newPath = [...prev, coords]
-      
+
       // Draw the current stroke on canvas with applied opacity and stroke width
       ctx.globalAlpha = tool.opacity
       ctx.strokeStyle = tool.color
       ctx.lineWidth = tool.strokeWidth
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
-      
+
       if (newPath.length > 1) {
         const prevPoint = newPath[newPath.length - 2]
         ctx.beginPath()
@@ -301,39 +326,50 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(f
         ctx.lineTo(coords.x, coords.y)
         ctx.stroke()
       }
-      
+
       return newPath
     })
-  }, [isDrawing, tool, getCanvasCoordinates, draggingAnnotation])
+  }, [isDrawing, tool, draggingAnnotation])
 
-  const stopDrawing = useCallback((event?: React.MouseEvent<HTMLCanvasElement>) => {
+  const draw = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    const coords = getCanvasCoordinates(event)
+    handleMove(coords)
+  }, [getCanvasCoordinates, handleMove])
+
+  const handleTouch = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
+    event.preventDefault() // Prevent scrolling while drawing
+    const coords = getTouchCanvasCoordinates(event)
+    handleMove(coords)
+  }, [getTouchCanvasCoordinates, handleMove])
+
+  // Shared logic for stopping drawing/dragging
+  const handleStop = useCallback((coords?: Point) => {
     // Handle finishing drag of annotation
-    if (draggingAnnotation && event) {
-      const coords = getCanvasCoordinates(event)
+    if (draggingAnnotation && coords) {
       const newCanvasCoords = {
         x: coords.x - draggingAnnotation.offset.x,
         y: coords.y - draggingAnnotation.offset.y
       }
       const newImageCoords = canvasToImageCoordinates(newCanvasCoords)
-      
+
       // Save the new position
       if (onAnnotationUpdate && !isNaN(newImageCoords.x) && !isNaN(newImageCoords.y)) {
         onAnnotationUpdate(draggingAnnotation.id, [newImageCoords])
       }
-      
+
       setDraggingAnnotation(null)
       setDragPosition(null)
       return
     }
-    
+
     if (isDrawing && tool.type === 'pen' && currentPath.length > 1) {
       // Convert canvas coordinates to image coordinates for storage
       const imageCoords = currentPath.map(point => canvasToImageCoordinates(point))
-      
-      const validCoords = imageCoords.filter(coord => 
+
+      const validCoords = imageCoords.filter(coord =>
         !isNaN(coord.x) && !isNaN(coord.y) && coord.x >= 0 && coord.y >= 0
       )
-      
+
       if (validCoords.length > 1) {
         // Save the drawing path as annotation with current tool settings
         onAnnotationCreate({
@@ -347,12 +383,40 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(f
         console.error("Invalid drawing path - insufficient valid coordinates:", imageCoords)
       }
     }
-    
+
     setIsDrawing(false)
     setCurrentPath([])
     setDraggingAnnotation(null)
     setDragPosition(null)
-  }, [isDrawing, tool, currentPath, canvasToImageCoordinates, onAnnotationCreate, draggingAnnotation, getCanvasCoordinates, onAnnotationUpdate])
+  }, [isDrawing, tool, currentPath, canvasToImageCoordinates, onAnnotationCreate, draggingAnnotation, onAnnotationUpdate])
+
+  const stopDrawing = useCallback((event?: React.MouseEvent<HTMLCanvasElement>) => {
+    const coords = event ? getCanvasCoordinates(event) : undefined
+    handleStop(coords)
+  }, [getCanvasCoordinates, handleStop])
+
+  const stopTouch = useCallback((event?: React.TouchEvent<HTMLCanvasElement>) => {
+    if (event) {
+      event.preventDefault()
+      // For touch end, we need to use changedTouches instead of touches
+      const touch = event.changedTouches[0]
+      if (touch) {
+        const canvas = canvasRef.current
+        if (canvas && isImageLoaded) {
+          const rect = canvas.getBoundingClientRect()
+          const scaleX = canvas.width / rect.width
+          const scaleY = canvas.height / rect.height
+          const coords = {
+            x: (touch.clientX - rect.left) * scaleX,
+            y: (touch.clientY - rect.top) * scaleY
+          }
+          handleStop(coords)
+          return
+        }
+      }
+    }
+    handleStop()
+  }, [handleStop, isImageLoaded])
 
   // Redraw all existing annotations on canvas
   const redrawAnnotations = useCallback(() => {
@@ -592,9 +656,14 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(f
           onMouseMove={draw}
           onMouseUp={(e) => stopDrawing(e)}
           onMouseLeave={(e) => stopDrawing(e)}
-          style={{ 
+          onTouchStart={startTouch}
+          onTouchMove={handleTouch}
+          onTouchEnd={stopTouch}
+          onTouchCancel={stopTouch}
+          style={{
             zIndex: 10,
-            cursor: getCursorStyle()
+            cursor: getCursorStyle(),
+            touchAction: 'none' // Prevent default touch behaviors like scrolling
           }}
         />
       </div>

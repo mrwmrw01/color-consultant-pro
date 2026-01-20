@@ -76,11 +76,6 @@ export function TopColorsDisplay({ colors }: TopColorsDisplayProps) {
                       <p className="text-sm font-medium truncate" style={{ color: '#111827' }}>{color.name}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <p className="text-xs" style={{ color: '#8b4513' }}>{color.manufacturer}</p>
-                        {color.colorFamily && (
-                          <Badge variant="outline" className="text-xs border-gray-600" style={{ color: '#111827' }}>
-                            {color.colorFamily}
-                          </Badge>
-                        )}
                       </div>
                     </div>
 

@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -43,6 +43,8 @@ export function PhotoUpload({ projects, globalRooms, preselectedProjectId }: Pho
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const router = useRouter()
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Update selected project when preselected project changes
   useEffect(() => {
@@ -251,18 +253,56 @@ export function PhotoUpload({ projects, globalRooms, preselectedProjectId }: Pho
           <div
             onDrop={handleDrop}
             onDragOver={handleDragOver}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer"
-            onClick={() => document.getElementById('file-input')?.click()}
+            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors"
           >
-            <Camera className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <FileImage className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Drop photos here, or click to browse
+              Add Photos to Project
             </h3>
-            <p className="text-gray-600">
-              Supports JPG, PNG, GIF, and WebP formats
+            <p className="text-gray-600 mb-6">
+              Take a photo or browse your files
             </p>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+              <Button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="flex-1 h-12"
+                variant="default"
+              >
+                <Camera className="h-5 w-5 mr-2" />
+                Take Photo
+              </Button>
+
+              <Button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-1 h-12"
+                variant="outline"
+              >
+                <Upload className="h-5 w-5 mr-2" />
+                Browse Files
+              </Button>
+            </div>
+
+            <p className="text-sm text-gray-500 mt-4">
+              Or drag and drop photos here
+            </p>
+
+            {/* Hidden camera input - uses rear camera on mobile */}
             <input
-              id="file-input"
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
+            {/* Hidden file input - for browsing */}
+            <input
+              ref={fileInputRef}
               type="file"
               multiple
               accept="image/*"

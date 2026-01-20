@@ -230,7 +230,6 @@ model Color {
   manufacturer String   // e.g., "Sherwin Williams", "Benjamin Moore", "Custom Paint Co"
   rgbColor     String?  // RGB values (e.g., "238, 237, 231")
   hexColor     String?  // for display purposes
-  colorFamily  String?  // color family/category
   notes        String?
   usageCount   Int      @default(0) // track how many times used
   firstUsedAt  DateTime? // when first used in a project

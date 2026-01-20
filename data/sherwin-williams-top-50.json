@@ -1,0 +1,283 @@
+[
+  {
+    "colorCode": "SW 7005",
+    "name": "Pure White",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "238, 237, 231",
+    "hexColor": "#EEEDE7",
+    "notes": "Popular warm white for interiors",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] },
+      { "productLine": "Duration Interior", "sheens": ["Flat", "Matte", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7006",
+    "name": "Extra White",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "238, 238, 233",
+    "hexColor": "#EEEEE9",
+    "notes": "Bright, clean white - most popular trim/ceiling color",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] },
+      { "productLine": "ProClassic Interior", "sheens": ["Semi-Gloss", "Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7015",
+    "name": "Repose Gray",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "196, 195, 190",
+    "hexColor": "#C4C3BE",
+    "notes": "Most popular gray - warm undertones",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] },
+      { "productLine": "Duration Interior", "sheens": ["Flat", "Matte", "Satin"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7029",
+    "name": "Agreeable Gray",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "202, 199, 190",
+    "hexColor": "#CAC7BE",
+    "notes": "Best-selling gray with beige undertones",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] },
+      { "productLine": "Duration Interior", "sheens": ["Flat", "Matte", "Satin"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7036",
+    "name": "Accessible Beige",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "207, 201, 191",
+    "hexColor": "#CFC9BF",
+    "notes": "Warm greige - very versatile",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] },
+      { "productLine": "Duration Interior", "sheens": ["Flat", "Matte", "Satin"] }
+    ]
+  },
+  {
+    "colorCode": "SW 9163",
+    "name": "Eider White",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "235, 233, 226",
+    "hexColor": "#EBE9E2",
+    "notes": "Soft warm white with gray undertones",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7047",
+    "name": "Porpoise",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "175, 171, 164",
+    "hexColor": "#AFABA4",
+    "notes": "Medium gray with warm undertones",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 6258",
+    "name": "Tricorn Black",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "43, 43, 43",
+    "hexColor": "#2B2B2B",
+    "notes": "True black for accents and trim",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Satin", "Semi-Gloss", "Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7012",
+    "name": "Creamy",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "238, 230, 213",
+    "hexColor": "#EEE6D5",
+    "notes": "Warm off-white with yellow undertones",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7674",
+    "name": "Peppercorn",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "108, 105, 98",
+    "hexColor": "#6C6962",
+    "notes": "Dark warm gray for accents",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7016",
+    "name": "Mindful Gray",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "177, 174, 166",
+    "hexColor": "#B1AEA6",
+    "notes": "Warm gray with subtle taupe",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7057",
+    "name": "Silver Strand",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "213, 214, 208",
+    "hexColor": "#D5D6D0",
+    "notes": "Soft gray-green, coastal feel",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 6203",
+    "name": "Spare White",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "228, 228, 223",
+    "hexColor": "#E4E4DF",
+    "notes": "Soft warm white with gray",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7043",
+    "name": "Worldly Gray",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "176, 171, 161",
+    "hexColor": "#B0ABA1",
+    "notes": "Warm greige with taupe",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7641",
+    "name": "Collonade Gray",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "190, 188, 183",
+    "hexColor": "#BEBCB7",
+    "notes": "Soft gray with greige undertones",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7599",
+    "name": "Crushed Ice",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "225, 229, 229",
+    "hexColor": "#E1E5E5",
+    "notes": "Cool light gray",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 9140",
+    "name": "Upward",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "217, 218, 214",
+    "hexColor": "#D9DAD6",
+    "notes": "Light gray with green undertones",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7632",
+    "name": "Modern Gray",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "186, 185, 179",
+    "hexColor": "#BAB9B3",
+    "notes": "Warm gray with beige",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7551",
+    "name": "Greek Villa",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "237, 236, 230",
+    "hexColor": "#EDECE6",
+    "notes": "Warm white with cream",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7014",
+    "name": "Eider White",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "230, 227, 218",
+    "hexColor": "#E6E3DA",
+    "notes": "Soft white with gray-green",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7673",
+    "name": "Pewter Cast",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "121, 118, 111",
+    "hexColor": "#79766F",
+    "notes": "Medium-dark warm gray",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7072",
+    "name": "Dorian Gray",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "135, 134, 129",
+    "hexColor": "#878681",
+    "notes": "Medium gray with warm undertones",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 6385",
+    "name": "Dover White",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "234, 230, 217",
+    "hexColor": "#EAE6D9",
+    "notes": "Soft warm white",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 6245",
+    "name": "Rock Candy",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "225, 217, 208",
+    "hexColor": "#E1D9D0",
+    "notes": "Warm beige with pink undertones",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] }
+    ]
+  },
+  {
+    "colorCode": "SW 7008",
+    "name": "Alabaster",
+    "manufacturer": "Sherwin Williams",
+    "rgbColor": "237, 234, 224",
+    "hexColor": "#EDEAE0",
+    "notes": "Popular warm white - Color of the Year 2016",
+    "productLines": [
+      { "productLine": "Emerald Interior", "sheens": ["Flat", "Satin", "Semi-Gloss"] },
+      { "productLine": "Duration Interior", "sheens": ["Flat", "Matte", "Satin"] }
+    ]
+  }
+]

@@ -69,7 +69,6 @@ export async function POST(request: NextRequest) {
       productLines, // Array of { productLine, sheens[] }
       rgbColor,
       hexColor,
-      colorFamily,
       notes
     } = data
 
@@ -102,7 +101,6 @@ export async function POST(request: NextRequest) {
         manufacturer,
         rgbColor,
         hexColor,
-        colorFamily,
         notes,
         availability: {
           create: productLines?.flatMap((pl: any) => 
