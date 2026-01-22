@@ -29,6 +29,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { DrawingCanvas } from "./drawing-canvas"
 import { AnnotationToolbar } from "./annotation-toolbar"
+import { DraggableZoomControls } from "./draggable-zoom-controls"
 import { AddCustomColorDialog } from "@/components/colors/add-custom-color-dialog"
 import { QuickAddRoom } from "@/components/projects/quick-add-room"
 import { RecentColorsPicker } from "@/components/colors/recent-colors-picker"
@@ -1061,43 +1062,15 @@ export function PhotoAnnotator({
             <div className={`grid gap-4 transition-all duration-300 ${isSidebarOpen ? 'lg:grid-cols-[1fr_400px]' : 'grid-cols-1'}`}>
               {/* Drawing Canvas */}
               <Card className="relative">
-                {/* Zoom Controls - Floating */}
-                <div className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg border p-2 flex flex-col gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleZoomIn}
-                    disabled={zoomLevel >= 200}
-                    title="Zoom in"
-                    className="h-8 w-8 p-0"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  <div className="text-center text-xs font-medium px-1">
-                    {zoomLevel}%
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleZoomOut}
-                    disabled={zoomLevel <= 50}
-                    title="Zoom out"
-                    className="h-8 w-8 p-0"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                    </svg>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleResetZoom}
-                    title="Reset zoom"
-                    className="h-8 w-8 p-0 text-xs"
-                  >
-                    1:1
-                  </Button>
-                </div>
+                {/* Zoom Controls - Draggable Floating */}
+                <DraggableZoomControls
+                  zoomLevel={zoomLevel}
+                  onZoomIn={handleZoomIn}
+                  onZoomOut={handleZoomOut}
+                  onResetZoom={handleResetZoom}
+                  minZoom={50}
+                  maxZoom={200}
+                />
 
                 <CardContent className="p-0 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
                   <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left', transition: 'transform 0.2s' }}>
