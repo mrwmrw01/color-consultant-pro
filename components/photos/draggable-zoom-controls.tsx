@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, GripVertical } from "lucide-react"
+import { Plus, GripHorizontal } from "lucide-react"
 
 interface DraggableZoomControlsProps {
   zoomLevel: number
@@ -113,14 +113,14 @@ export function DraggableZoomControls({
     >
       {/* Drag Handle */}
       <div
-        className="drag-handle flex items-center justify-center py-1 px-2 cursor-grab active:cursor-grabbing border-b hover:bg-gray-50 rounded-t-lg"
+        className="drag-handle flex items-center justify-center py-2 px-1 cursor-grab active:cursor-grabbing border-r hover:bg-gray-50 rounded-l-lg"
         title="Drag to move"
       >
-        <GripVertical className="h-3 w-3 text-gray-400" />
+        <GripHorizontal className="h-3 w-3 text-gray-400" />
       </div>
 
       {/* Zoom Controls */}
-      <div className="p-2 flex flex-col gap-2">
+      <div className="p-2 flex flex-row items-center gap-2">
         <Button
           variant="outline"
           size="sm"
@@ -135,7 +135,7 @@ export function DraggableZoomControls({
           <Plus className="h-4 w-4" />
         </Button>
 
-        <div className="text-center text-xs font-medium px-1 select-none">
+        <div className="text-center text-xs font-medium px-2 select-none whitespace-nowrap">
           {zoomLevel}%
         </div>
 
