@@ -1,12 +1,11 @@
-
 generator client {
-    provider = "prisma-client-js"
-    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Account {
@@ -49,31 +48,32 @@ model User {
   role          String    @default("consultant")
 
   // Subscription tier for AI budget management
-  tier          String    @default("free") // free, pro, enterprise
+  tier String @default("free") // free, pro, enterprise
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  accounts Account[]
-  sessions Session[]
-  projects Project[]
-  clients  Client[]
+  accounts       Account[]
+  sessions       Session[]
+  projects       Project[]
+  clients        Client[]
+  favoriteColors UserFavoriteColor[]
 
   @@map("users")
 }
 
 model Client {
   id          String   @id @default(cuid())
-  name        String   // "Elite Property Management LLC" or "David & Sarah Martinez"
-  contactName String?  // Primary contact person
+  name        String // "Elite Property Management LLC" or "David & Sarah Martinez"
+  contactName String? // Primary contact person
   email       String?
   phone       String?
-  type        String?  // individual, business, property_management, contractor
+  type        String? // individual, business, property_management, contractor
   notes       String?  @db.Text
   status      String   @default("active") // active, inactive, archived
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  userId      String   // Consultant who owns this client
+  userId      String // Consultant who owns this client
 
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   properties Property[] // ONE CLIENT HAS MANY PROPERTIES
@@ -83,13 +83,13 @@ model Client {
 }
 
 model Property {
-  id          String   @id @default(cuid())
-  name        String?  // Optional: "Primary Residence", "Oak Street Building"
-  address     String   // REQUIRED: Full address
-  city        String?
-  state       String?
-  zipCode     String?
-  type        String?  // residential, commercial, multi_family, vacation, investment
+  id      String  @id @default(cuid())
+  name    String? // Optional: "Primary Residence", "Oak Street Building"
+  address String // REQUIRED: Full address
+  city    String?
+  state   String?
+  zipCode String?
+  type    String? // residential, commercial, multi_family, vacation, investment
 
   // Property-specific contacts (e.g., building superintendent)
   contactName  String?
@@ -101,8 +101,8 @@ model Property {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  clientId String   // BELONGS TO ONE CLIENT
-  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String // BELONGS TO ONE CLIENT
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   projects Project[] // ONE PROPERTY HAS MANY PROJECTS
 
@@ -119,26 +119,26 @@ model VerificationToken {
 }
 
 model Project {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String
   description String?
-  
+
   // NEW: Reference to property (3-tier hierarchy)
-  propertyId  String?  // Made optional for migration phase
-  property    Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  
+  propertyId String? // Made optional for migration phase
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
   // OLD: Direct client fields (deprecated, kept for migration)
-  clientName  String?  // Made optional for migration
+  clientName  String? // Made optional for migration
   clientEmail String?
   clientPhone String?
   address     String?
-  
-  status      String   @default("active") // active, completed, archived
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  userId      String
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    String   @default("active") // active, completed, archived
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   photos   Photo[]
   rooms    Room[]
   synopsis ColorSynopsis[]
@@ -149,11 +149,11 @@ model Project {
 
 model Room {
   id          String   @id @default(cuid())
-  name        String   // living room, bedroom, kitchen, etc.
+  name        String // living room, bedroom, kitchen, etc.
   description String?
-  roomType    String?   // parent room type
-  subType     String?  // sub-type within the parent
-  projectId   String?  // Made optional - rooms are now global
+  roomType    String? // parent room type
+  subType     String? // sub-type within the parent
+  projectId   String? // Made optional - rooms are now global
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -167,33 +167,33 @@ model Room {
 }
 
 model Photo {
-  id                    String   @id @default(cuid())
-  filename              String
-  originalFilename      String
+  id               String @id @default(cuid())
+  filename         String
+  originalFilename String
 
   // Multiple image sizes for cost optimization
-  cloud_storage_path    String   // Large (2048x2048 WebP)
-  medium_path           String?  // 800x800 WebP for detail view
-  thumbnail_path        String?  // 200x200 WebP for galleries
-  annotated_photo_path  String?  // Annotated version (if exists)
+  cloud_storage_path   String // Large (2048x2048 WebP)
+  medium_path          String? // 800x800 WebP for detail view
+  thumbnail_path       String? // 200x200 WebP for galleries
+  annotated_photo_path String? // Annotated version (if exists)
 
   // Optional: blur placeholder for progressive loading
-  blur_placeholder      String?  @db.Text
+  blur_placeholder String? @db.Text
 
-  mimeType              String
-  size                  Int      // Original file size
-  width                 Int?
-  height                Int?
+  mimeType String
+  size     Int // Original file size
+  width    Int?
+  height   Int?
 
   // Storage optimization metadata
-  optimized_size        Int?     // Total size of all optimized versions
-  storage_savings       Float?   // Percentage saved vs original
+  optimized_size  Int? // Total size of all optimized versions
+  storage_savings Float? // Percentage saved vs original
 
-  projectId             String
-  roomId                String?
-  description           String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  projectId   String
+  roomId      String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   room        Room?        @relation(fields: [roomId], references: [id], onDelete: SetNull)
@@ -206,39 +206,40 @@ model Annotation {
   id          String   @id @default(cuid())
   photoId     String
   roomId      String?
-  type        String   // drawing, text, color_tag
-  data        Json     // drawing paths, text content, coordinates, etc.
-  surfaceType String?  // wall, trim, ceiling, door, window, etc.
+  type        String // drawing, text, color_tag
+  data        Json // drawing paths, text content, coordinates, etc.
+  surfaceType String? // wall, trim, ceiling, door, window, etc.
   colorId     String?
-  productLine String?  // e.g., "Cashmere Interior", "Duration Interior"
-  sheen       String?  // e.g., "Flat", "Eggshell", "Satin", "Semi-Gloss", "Gloss"
+  productLine String? // e.g., "Cashmere Interior", "Duration Interior"
+  sheen       String? // e.g., "Flat", "Eggshell", "Satin", "Semi-Gloss", "Gloss"
   notes       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  photo Photo @relation(fields: [photoId], references: [id], onDelete: Cascade)
-  room  Room? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  photo Photo  @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  room  Room?  @relation(fields: [roomId], references: [id], onDelete: SetNull)
   color Color? @relation(fields: [colorId], references: [id])
 
   @@map("annotations")
 }
 
 model Color {
-  id           String   @id @default(cuid())
-  colorCode    String   @unique // e.g., "SW 7005", "BM OC-17"
-  name         String   // e.g., "Extra White", "Cloud White"
-  manufacturer String   // e.g., "Sherwin Williams", "Benjamin Moore", "Custom Paint Co"
-  rgbColor     String?  // RGB values (e.g., "238, 237, 231")
-  hexColor     String?  // for display purposes
+  id           String    @id @default(cuid())
+  colorCode    String    @unique // e.g., "SW 7005", "BM OC-17"
+  name         String // e.g., "Extra White", "Cloud White"
+  manufacturer String // e.g., "Sherwin Williams", "Benjamin Moore", "Custom Paint Co"
+  rgbColor     String? // RGB values (e.g., "238, 237, 231")
+  hexColor     String? // for display purposes
   notes        String?
-  usageCount   Int      @default(0) // track how many times used
+  usageCount   Int       @default(0) // track how many times used
   firstUsedAt  DateTime? // when first used in a project
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   annotations     Annotation[]
   synopsisEntries SynopsisEntry[]
   availability    ColorAvailability[] // products and sheens this color is available in
+  favoritedBy     UserFavoriteColor[]
 
   @@map("colors")
 }
@@ -246,8 +247,8 @@ model Color {
 model ColorAvailability {
   id          String   @id @default(cuid())
   colorId     String
-  productLine String   // e.g., "Cashmere Interior", "Duration Interior"
-  sheen       String   // e.g., "Flat", "Eggshell", "Satin", "Semi-Gloss", "Gloss"
+  productLine String // e.g., "Cashmere Interior", "Duration Interior"
+  sheen       String // e.g., "Flat", "Eggshell", "Satin", "Semi-Gloss", "Gloss"
   createdAt   DateTime @default(now())
 
   color Color @relation(fields: [colorId], references: [id], onDelete: Cascade)
@@ -271,22 +272,37 @@ model ColorSynopsis {
 }
 
 model SynopsisEntry {
-  id            String   @id @default(cuid())
-  synopsisId    String
-  roomId        String
-  colorId       String
-  productLine   String   // e.g., "Cashmere Interior", "Duration Interior"
-  sheen         String   // e.g., "Flat", "Eggshell", "Satin", "Semi-Gloss", "Gloss"
-  surfaceType   String   // wall, trim, ceiling, etc.
-  surfaceArea   String?  // description like "North Wall", "All Trim"
-  quantity      String?  // estimated coverage
-  notes         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String   @id @default(cuid())
+  synopsisId  String
+  roomId      String
+  colorId     String
+  productLine String // e.g., "Cashmere Interior", "Duration Interior"
+  sheen       String // e.g., "Flat", "Eggshell", "Satin", "Semi-Gloss", "Gloss"
+  surfaceType String // wall, trim, ceiling, etc.
+  surfaceArea String? // description like "North Wall", "All Trim"
+  quantity    String? // estimated coverage
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  synopsis  ColorSynopsis @relation(fields: [synopsisId], references: [id], onDelete: Cascade)
-  room      Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  color     Color         @relation(fields: [colorId], references: [id])
+  synopsis ColorSynopsis @relation(fields: [synopsisId], references: [id], onDelete: Cascade)
+  room     Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  color    Color         @relation(fields: [colorId], references: [id])
 
   @@map("synopsis_entries")
+}
+
+model UserFavoriteColor {
+  id        String   @id @default(cuid())
+  userId    String
+  colorId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  color Color @relation(fields: [colorId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, colorId])
+  @@index([userId])
+  @@index([colorId])
+  @@map("user_favorite_colors")
 }

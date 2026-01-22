@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -31,8 +31,12 @@ import { DrawingCanvas } from "./drawing-canvas"
 import { AnnotationToolbar } from "./annotation-toolbar"
 import { AddCustomColorDialog } from "@/components/colors/add-custom-color-dialog"
 import { QuickAddRoom } from "@/components/projects/quick-add-room"
+import { RecentColorsPicker } from "@/components/colors/recent-colors-picker"
+import { FavoritesSection } from "@/components/colors/favorites-section"
 import { SURFACE_TYPES, PRODUCT_LINES, SHEEN_OPTIONS } from "@/lib/types"
+import { addRecentColor } from "@/lib/recent-colors"
 import toast from "react-hot-toast"
+import Fuse from 'fuse.js'
 
 interface PhotoAnnotatorProps {
   photo: any
@@ -196,15 +200,28 @@ export function PhotoAnnotator({
     return a.name.localeCompare(b.name)
   })
 
-  // Filter colors based on search
-  const filteredColors = sortedColors.filter(color => {
-    const searchTerm = colorSearch.toLowerCase()
-    return (
-      color.name.toLowerCase().includes(searchTerm) ||
-      color.colorCode.toLowerCase().includes(searchTerm) ||
-      color.manufacturer.toLowerCase().includes(searchTerm)
-    )
-  })
+  // Configure Fuse.js for fuzzy search
+  const fuse = useMemo(() => {
+    return new Fuse(sortedColors, {
+      keys: [
+        { name: 'name', weight: 2 },
+        { name: 'colorCode', weight: 1.5 },
+        { name: 'manufacturer', weight: 1 }
+      ],
+      threshold: 0.3,
+      includeScore: true,
+      includeMatches: true
+    })
+  }, [sortedColors])
+
+  // Filter colors based on search with fuzzy matching
+  const filteredColors = useMemo(() => {
+    if (!colorSearch.trim()) {
+      return sortedColors
+    }
+    const results = fuse.search(colorSearch)
+    return results.map(result => result.item)
+  }, [colorSearch, fuse, sortedColors])
 
   // Function to refresh annotations from server
   const refreshAnnotations = async () => {
@@ -436,6 +453,24 @@ export function PhotoAnnotator({
 
     fetchImageUrl()
   }, [photo.id])
+
+  // Track color selection for recent colors
+  useEffect(() => {
+    if (selectedColorId) {
+      const selectedColor = colors.find(c => c.id === selectedColorId)
+      if (selectedColor) {
+        addRecentColor({
+          id: selectedColor.id,
+          name: selectedColor.name,
+          colorCode: selectedColor.colorCode,
+          manufacturer: selectedColor.manufacturer,
+          hexColor: selectedColor.hexColor
+        })
+        // Dispatch custom event for same-tab updates
+        window.dispatchEvent(new Event('recentColorsUpdated'))
+      }
+    }
+  }, [selectedColorId, colors])
 
   const handleSaveAnnotation = async (annotationData: any) => {
     try {
@@ -1140,6 +1175,20 @@ export function PhotoAnnotator({
                     </>
                   )}
                 </Button>
+
+                {/* Favorites Section - Quick Access */}
+                <FavoritesSection
+                  onColorSelect={setSelectedColorId}
+                  selectedColorId={selectedColorId}
+                  className="pb-3 border-b"
+                />
+
+                {/* Recent Colors - Quick Access */}
+                <RecentColorsPicker
+                  onColorSelect={setSelectedColorId}
+                  selectedColorId={selectedColorId}
+                  className="pb-3 border-b"
+                />
 
                 {/* Color Selection with Browse and Add Custom Color Buttons */}
                 <div className="space-y-1.5">
