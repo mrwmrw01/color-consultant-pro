@@ -1,9 +1,53 @@
-node_modules/
-.next/
-.build/
-*.log
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+playwright-report/
+test-results/
+*.spec.js.snap
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
 .env
 .env.local
-.env.production
-.DS_Store
-*.bak
+.env.development.local
+.env.test.local
+.env.production.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Ralph temporary files
+.call_count
+.circuit_breaker_history
+.circuit_breaker_state
+.claude_session_id
+.exit_signals
+.last_reset
+.response_analysis
+status.json
+progress.json
+logs/
+docs/generated/
