@@ -79,6 +79,8 @@ model Client {
   properties Property[] // ONE CLIENT HAS MANY PROPERTIES
 
   @@unique([userId, name])
+  @@index([userId])
+  @@index([status])
   @@map("clients")
 }
 
@@ -107,6 +109,8 @@ model Property {
   projects Project[] // ONE PROPERTY HAS MANY PROJECTS
 
   @@unique([clientId, address]) // Unique addresses per client
+  @@index([clientId])
+  @@index([status])
   @@map("properties")
 }
 
@@ -144,6 +148,8 @@ model Project {
   synopsis ColorSynopsis[]
 
   @@unique([userId, name])
+  @@index([userId])
+  @@index([status])
   @@map("projects")
 }
 
@@ -199,6 +205,10 @@ model Photo {
   room        Room?        @relation(fields: [roomId], references: [id], onDelete: SetNull)
   annotations Annotation[]
 
+  // Performance indexes for common queries
+  @@index([projectId])
+  @@index([roomId])
+  @@index([createdAt])
   @@map("photos")
 }
 
@@ -220,6 +230,10 @@ model Annotation {
   room  Room?  @relation(fields: [roomId], references: [id], onDelete: SetNull)
   color Color? @relation(fields: [colorId], references: [id])
 
+  // Performance indexes for common queries
+  @@index([photoId])
+  @@index([colorId])
+  @@index([roomId])
   @@map("annotations")
 }
 
@@ -268,6 +282,7 @@ model ColorSynopsis {
   project Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   entries SynopsisEntry[]
 
+  @@index([projectId])
   @@map("color_synopsis")
 }
 
@@ -289,6 +304,9 @@ model SynopsisEntry {
   room     Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
   color    Color         @relation(fields: [colorId], references: [id])
 
+  @@index([synopsisId])
+  @@index([roomId])
+  @@index([colorId])
   @@map("synopsis_entries")
 }
 

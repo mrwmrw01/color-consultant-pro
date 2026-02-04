@@ -23,14 +23,19 @@ export async function POST(request: NextRequest) {
     // Check rate limit
     const rateLimitResult = await checkRateLimit(session.user.id, aiSuggestionsLimiter)
     if (!rateLimitResult.allowed) {
+      const errorMessage = rateLimitResult.circuitOpen
+        ? "Service temporarily unavailable. Please try again in a few minutes."
+        : "Rate limit exceeded. Please try again later."
+      
       return NextResponse.json(
         {
-          error: "Rate limit exceeded. Please try again later.",
+          error: errorMessage,
           retryAfter: rateLimitResult.retryAfter,
-          ralphQuote: "I'm tired! 😴"
+          ralphQuote: rateLimitResult.circuitOpen ? "I'm taking a nap! 😴" : "I'm tired! 😴",
+          circuitOpen: rateLimitResult.circuitOpen
         },
         {
-          status: 429,
+          status: rateLimitResult.circuitOpen ? 503 : 429,
           headers: getRateLimitHeaders(rateLimitResult)
         }
       )
