@@ -61,9 +61,11 @@ export async function optimizeImage(
   const originalSize = buffer.length
 
   // Generate sizes in parallel
+  // .rotate() with no args auto-applies EXIF orientation (fixes phone photo rotation)
   const [large, medium, thumbnail, original] = await Promise.all([
     // Large (for annotation/editing)
     sharp(buffer)
+      .rotate()
       .resize(maxDimensions.width, maxDimensions.height, {
         fit: 'inside',
         withoutEnlargement: true,
@@ -73,6 +75,7 @@ export async function optimizeImage(
 
     // Medium (for detail view)
     sharp(buffer)
+      .rotate()
       .resize(800, 800, {
         fit: 'inside',
         withoutEnlargement: true,
@@ -82,6 +85,7 @@ export async function optimizeImage(
 
     // Thumbnail (for galleries)
     sharp(buffer)
+      .rotate()
       .resize(200, 200, {
         fit: 'cover', // Crop to square
         position: 'center',
@@ -91,7 +95,7 @@ export async function optimizeImage(
 
     // Original (optional, only if requested)
     generateOriginal
-      ? sharp(buffer).webp({ quality: 90 }).toBuffer()
+      ? sharp(buffer).rotate().webp({ quality: 90 }).toBuffer()
       : Promise.resolve(undefined),
   ])
 
@@ -151,6 +155,7 @@ export async function optimizeImage(
 export async function generateBlurPlaceholder(buffer: Buffer): Promise<string> {
   // Generate tiny 20x20 placeholder
   const placeholder = await sharp(buffer)
+    .rotate()
     .resize(20, 20, { fit: 'inside' })
     .blur(3)
     .webp({ quality: 50 })

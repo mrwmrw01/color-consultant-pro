@@ -248,34 +248,84 @@ export const ROOM_HIERARCHY = {
 export type RoomType = keyof typeof ROOM_HIERARCHY
 export type RoomSubType<T extends RoomType> = typeof ROOM_HIERARCHY[T]['subtypes'][number]
 
-// Product Lines - can be selected independently for any color
-export const PRODUCT_LINES = [
-  'Cashmere Interior',
-  'Duration Interior', 
-  'Emerald Interior',
-  'SuperPaint Interior',
-  'ProClassic Interior',
-  'Harmony Interior',
-  'ProMar 200 Interior',
-  'A-100 Interior',
-  'Cashmere Exterior',
-  'Duration Exterior',
+// Product Lines grouped by manufacturer — from Products spreadsheet
+export const SW_PRODUCT_LINES = [
+  // Exterior
   'Emerald Exterior',
-  'SuperPaint Exterior',
+  'Emerald Rain Refresh Exterior',
+  'Duration Exterior',
+  'Super Paint Exterior',
+  'Latitude Exterior',
   'A-100 Exterior',
+  'Loxon Exterior',
+  'Porch & Floor Exterior',
+  // Interior
+  'Emerald Designer Interior',
+  'Emerald Interior',
+  'Duration Interior',
+  'Cashmere Interior',
+  'Super Paint Interior',
+  'SW Ceiling Paint Interior',
+  'ProClassic Interior',
+  'ProClassic WB Alkyd Enamel Interior',
+  'ProClassic Oil Interior',
+  "Painter's Edge Plus Interior",
+  'ProMar 400 Interior',
+  'ProMar 200 Interior',
+  // Interior/Exterior
+  'Emerald Urethane Interior/Exterior',
+] as const
+
+export const BM_PRODUCT_LINES = [
+  // Exterior
+  'Aura Exterior',
+  'Regal Exterior',
+  'Ben Exterior',
+  'Element Guard Exterior',
+  'Floor & Patio Exterior',
+  'WoodLuxe-WB Exterior',
+  'WoodLuxe-Oil Exterior',
+  // Interior
+  'Aura Bath & Spa Interior',
+  'Aura Interior',
+  'Regal Interior',
+  'Ben Interior',
+  'BM Ceiling Paint Interior',
+  'Advance Interior',
+  'Kitchen & Bath Interior',
+] as const
+
+export const PRODUCT_LINES = [
+  ...SW_PRODUCT_LINES,
+  ...BM_PRODUCT_LINES,
   'Custom'
 ] as const
 
-// Sheens - can be selected independently for any color
+// Map manufacturer to their product lines for filtering
+export const PRODUCT_LINES_BY_MANUFACTURER: Record<string, readonly string[]> = {
+  'Sherwin Williams': SW_PRODUCT_LINES,
+  'Benjamin Moore': BM_PRODUCT_LINES,
+}
+
+// Sheens - full set from all product lines
 export const SHEEN_OPTIONS = [
+  'Ultra Flat',
   'Flat',
   'Matte',
+  'Low Sheen',
   'Eggshell',
+  'Low Luster',
   'Satin',
   'Pearl',
   'Semi-Gloss',
+  'Medium Luster',
+  'Soft Gloss',
   'Gloss',
-  'High-Gloss'
+  'High Gloss',
+  'Translucent',
+  'Semi-Transparent',
+  'Semi-Solid',
+  'Solid',
 ] as const
 
 export type ProductLine = typeof PRODUCT_LINES[number]

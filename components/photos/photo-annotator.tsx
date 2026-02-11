@@ -1105,7 +1105,7 @@ export function PhotoAnnotator({
           </div>
 
           {/* Main Content Area: Photo and Collapsible Sidebar */}
-          <div className="relative">
+          <div className="relative overflow-x-hidden">
             <div className={`grid gap-4 transition-all duration-300 ${isSidebarOpen ? 'lg:grid-cols-[1fr_400px]' : 'grid-cols-1'}`}>
               {/* Drawing Canvas */}
               <Card className="relative">
@@ -1153,7 +1153,7 @@ export function PhotoAnnotator({
 
               {/* Annotation Details Panel - Fixed Right Sidebar */}
               {isSidebarOpen && (
-                <Card className="lg:fixed lg:right-6 lg:top-[140px] lg:w-[380px] lg:h-[calc(100vh-160px)] flex flex-col shadow-lg border-2">
+                <Card className="w-full max-w-[100vw] overflow-x-hidden lg:fixed lg:right-6 lg:top-[140px] lg:w-[380px] lg:max-w-none lg:h-[calc(100vh-160px)] flex flex-col shadow-lg border-2">
                   <CardHeader className="pb-2 py-3 flex-shrink-0">
                     <CardTitle className="text-sm md:text-base flex items-center gap-2">
                       <Tag className="h-4 w-4" />
