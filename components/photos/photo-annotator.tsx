@@ -30,6 +30,7 @@ import { useRouter } from "next/navigation"
 import { DrawingCanvas } from "./drawing-canvas"
 import { AnnotationToolbar } from "./annotation-toolbar"
 import { DraggableZoomControls } from "./draggable-zoom-controls"
+import { MobileBottomSheet } from "./mobile-bottom-sheet"
 import { AddCustomColorDialog } from "@/components/colors/add-custom-color-dialog"
 import { QuickAddRoom } from "@/components/projects/quick-add-room"
 import { RecentColorsPicker } from "@/components/colors/recent-colors-picker"
@@ -171,6 +172,10 @@ export function PhotoAnnotator({
         handlePreviousPhoto()
       } else if (e.key === 'ArrowRight' && hasNextPhoto) {
         handleNextPhoto()
+      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'C') {
+        // Cmd/Ctrl + Shift + C: Copy from previous photo
+        e.preventDefault()
+        handleCopyFromPreviousPhoto()
       }
     }
 
@@ -320,6 +325,48 @@ export function PhotoAnnotator({
   const handleOpenCopyDialog = () => {
     setShowCopyDialog(true)
     loadAnnotationSuggestions()
+  }
+
+  // Function to copy from previous photo
+  const handleCopyFromPreviousPhoto = async () => {
+    if (!hasPreviousPhoto) {
+      toast.error("No previous photo available")
+      return
+    }
+    
+    const previousPhoto = allProjectPhotos[currentPhotoIndex - 1]
+    if (!previousPhoto?._count?.annotations) {
+      toast.error("Previous photo has no annotations to copy")
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/photos/${previousPhoto.id}/annotations`)
+      if (response.ok) {
+        const annotations = await response.json()
+        if (annotations.length > 0) {
+          // Get the most recent annotation from the previous photo
+          const lastAnnotation = annotations[annotations.length - 1]
+          
+          setSelectedColorId(lastAnnotation.colorId || "")
+          setSelectedSurface(lastAnnotation.surfaceType || "")
+          setSelectedProductLine(lastAnnotation.productLine || "")
+          setSelectedSheen(lastAnnotation.sheen || "")
+          if (lastAnnotation.roomId) {
+            setSelectedRoomId(lastAnnotation.roomId)
+          }
+          
+          toast.success(`Copied from previous photo: ${lastAnnotation.color?.name || 'Annotation'}`, {
+            duration: 4000
+          })
+        } else {
+          toast.error("Previous photo has no annotations")
+        }
+      }
+    } catch (error) {
+      console.error("Error copying from previous photo:", error)
+      toast.error("Failed to copy from previous photo")
+    }
   }
 
   // Get AI color suggestions
@@ -1041,8 +1088,8 @@ export function PhotoAnnotator({
             </Card>
           )}
 
-          {/* Compact Annotation Toolbar - Made sticky on mobile */}
-          <div className="sticky top-0 z-10 bg-white rounded-lg border shadow-sm">
+          {/* Desktop Annotation Toolbar */}
+          <div className="hidden lg:block sticky top-0 z-10 bg-white rounded-lg border shadow-sm">
             <div className="px-3 py-2 md:px-4 md:py-3">
               <AnnotationToolbar 
                 currentTool={currentTool}
@@ -1090,6 +1137,10 @@ export function PhotoAnnotator({
                           prev === annotationId ? null : annotationId
                         )
                       }}
+                      zoomLevel={zoomLevel}
+                      onZoomChange={setZoomLevel}
+                      onSwipeLeft={hasNextPhoto ? handleNextPhoto : undefined}
+                      onSwipeRight={hasPreviousPhoto ? handlePreviousPhoto : undefined}
                     />
                   ) : (
                     <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
@@ -1102,7 +1153,7 @@ export function PhotoAnnotator({
 
               {/* Annotation Details Panel - Fixed Right Sidebar */}
               {isSidebarOpen && (
-                <Card className="lg:sticky lg:top-4 lg:h-[calc(100vh-180px)] flex flex-col">
+                <Card className="lg:fixed lg:right-6 lg:top-[140px] lg:w-[380px] lg:h-[calc(100vh-160px)] flex flex-col shadow-lg border-2">
                   <CardHeader className="pb-2 py-3 flex-shrink-0">
                     <CardTitle className="text-sm md:text-base flex items-center gap-2">
                       <Tag className="h-4 w-4" />
@@ -1115,17 +1166,39 @@ export function PhotoAnnotator({
                   Draw or place tags first, then add color and surface details here
                 </div>
 
-                {/* Copy from Recent Button */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleOpenCopyDialog}
-                  className="w-full h-9 text-xs"
-                >
-                  <Copy className="h-3.5 w-3.5 mr-2" />
-                  Copy from Recent Annotations
-                </Button>
+                {/* Copy Annotation Buttons */}
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenCopyDialog}
+                      className="flex-1 h-9 text-xs"
+                      title="Browse all recent annotations"
+                    >
+                      <Copy className="h-3.5 w-3.5 mr-1" />
+                      Copy Recent
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyFromPreviousPhoto}
+                      disabled={!hasPreviousPhoto}
+                      className="flex-1 h-9 text-xs"
+                      title={hasPreviousPhoto ? "Quick copy from previous photo (Cmd+Shift+C)" : "No previous photo"}
+                    >
+                      <svg className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                      Prev Photo
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-400 text-center">
+                    {hasPreviousPhoto ? "Tip: Use Cmd+Shift+C to quick copy" : "First photo - no previous to copy from"}
+                  </p>
+                </div>
 
                 {/* Get AI Suggestions Button */}
                 <Button
@@ -2055,6 +2128,18 @@ export function PhotoAnnotator({
         </DialogContent>
       </Dialog>
       </Dialog>
+
+      {/* Mobile Bottom Sheet Toolbar */}
+      <MobileBottomSheet
+        currentTool={currentTool}
+        onToolChange={handleToolChange}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onClear={handleClearAll}
+        canUndo={undoStack.length > 0}
+        canRedo={redoStack.length > 0}
+        canClear={annotations.length > 0}
+      />
     </div>
   )
 }
