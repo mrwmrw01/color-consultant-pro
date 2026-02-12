@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -23,7 +23,11 @@ import {
   Copy,
   TrendingUp,
   Clock,
-  Sparkles
+  Sparkles,
+  X,
+  PanelRightOpen,
+  GripHorizontal,
+  Minimize2
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -127,6 +131,110 @@ export function PhotoAnnotator({
     return true
   })
   
+  // Floating panel drag/resize state (desktop only)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [panelPos, setPanelPos] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('annotation-panel-pos')
+      if (saved) try { return JSON.parse(saved) } catch {}
+      return { x: window.innerWidth - 340, y: 80 }
+    }
+    return { x: 800, y: 80 }
+  })
+  const [panelSize, setPanelSize] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('annotation-panel-size')
+      if (saved) try { return JSON.parse(saved) } catch {}
+    }
+    return { w: 320, h: 450 }
+  })
+  const [isDraggingPanel, setIsDraggingPanel] = useState(false)
+  const [isResizingPanel, setIsResizingPanel] = useState(false)
+  const dragOffsetRef = useRef({ x: 0, y: 0 })
+  const resizeStartRef = useRef({ x: 0, y: 0, w: 0, h: 0 })
+
+  // Save panel position/size to localStorage
+  useEffect(() => {
+    localStorage.setItem('annotation-panel-pos', JSON.stringify(panelPos))
+  }, [panelPos])
+  useEffect(() => {
+    localStorage.setItem('annotation-panel-size', JSON.stringify(panelSize))
+  }, [panelSize])
+
+  // Panel drag handlers
+  const handlePanelDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsDraggingPanel(true)
+    dragOffsetRef.current = {
+      x: e.clientX - panelPos.x,
+      y: e.clientY - panelPos.y
+    }
+  }, [panelPos])
+
+  const handlePanelDragStartTouch = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0]
+    setIsDraggingPanel(true)
+    dragOffsetRef.current = {
+      x: touch.clientX - panelPos.x,
+      y: touch.clientY - panelPos.y
+    }
+  }, [panelPos])
+
+  // Panel resize handlers
+  const handlePanelResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsResizingPanel(true)
+    resizeStartRef.current = {
+      x: e.clientX, y: e.clientY,
+      w: panelSize.w, h: panelSize.h
+    }
+  }, [panelSize])
+
+  const handlePanelResizeStartTouch = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation()
+    const touch = e.touches[0]
+    setIsResizingPanel(true)
+    resizeStartRef.current = {
+      x: touch.clientX, y: touch.clientY,
+      w: panelSize.w, h: panelSize.h
+    }
+  }, [panelSize])
+
+  // Global mouse/touch move/up for drag and resize
+  useEffect(() => {
+    const handleMove = (clientX: number, clientY: number) => {
+      if (isDraggingPanel) {
+        const newX = Math.max(0, Math.min(clientX - dragOffsetRef.current.x, window.innerWidth - 100))
+        const newY = Math.max(0, Math.min(clientY - dragOffsetRef.current.y, window.innerHeight - 100))
+        setPanelPos({ x: newX, y: newY })
+      }
+      if (isResizingPanel) {
+        const dx = clientX - resizeStartRef.current.x
+        const dy = clientY - resizeStartRef.current.y
+        const newW = Math.max(280, Math.min(resizeStartRef.current.w + dx, 600))
+        const newH = Math.max(250, Math.min(resizeStartRef.current.h + dy, window.innerHeight - 40))
+        setPanelSize({ w: newW, h: newH })
+      }
+    }
+    const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY)
+    const handleTouchMove = (e: TouchEvent) => handleMove(e.touches[0].clientX, e.touches[0].clientY)
+    const handleEnd = () => { setIsDraggingPanel(false); setIsResizingPanel(false) }
+
+    if (isDraggingPanel || isResizingPanel) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleEnd)
+      document.addEventListener('touchmove', handleTouchMove, { passive: true })
+      document.addEventListener('touchend', handleEnd)
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleEnd)
+      document.removeEventListener('touchmove', handleTouchMove)
+      document.removeEventListener('touchend', handleEnd)
+    }
+  }, [isDraggingPanel, isResizingPanel])
+
   // Mobile annotation dialog state
   const [showMobileAnnotationDialog, setShowMobileAnnotationDialog] = useState(false)
   const [mobileAnnotationReady, setMobileAnnotationReady] = useState(false)
@@ -1104,21 +1212,21 @@ export function PhotoAnnotator({
             </div>
           </div>
 
+          {/* Zoom Controls - Fixed Floating (not bound to photo) */}
+          <DraggableZoomControls
+            zoomLevel={zoomLevel}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onResetZoom={handleResetZoom}
+            minZoom={50}
+            maxZoom={200}
+          />
+
           {/* Main Content Area: Photo and Collapsible Sidebar */}
           <div className="relative overflow-x-hidden">
-            <div className={`grid gap-4 transition-all duration-300 ${isSidebarOpen ? 'lg:grid-cols-[1fr_400px]' : 'grid-cols-1'}`}>
+            <div className="grid gap-4 transition-all duration-300 grid-cols-1">
               {/* Drawing Canvas */}
               <Card className="relative">
-                {/* Zoom Controls - Draggable Floating */}
-                <DraggableZoomControls
-                  zoomLevel={zoomLevel}
-                  onZoomIn={handleZoomIn}
-                  onZoomOut={handleZoomOut}
-                  onResetZoom={handleResetZoom}
-                  minZoom={50}
-                  maxZoom={200}
-                />
-
                 <CardContent className="p-0 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
                   <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left', transition: 'transform 0.2s' }}>
                     {imageUrl ? (
@@ -1151,14 +1259,45 @@ export function PhotoAnnotator({
                 </CardContent>
               </Card>
 
-              {/* Annotation Details Panel - Fixed Right Sidebar */}
+              {/* Annotation Details Panel - Floating Draggable/Resizable (desktop) */}
               {isSidebarOpen && (
-                <Card className="w-full max-w-[100vw] overflow-x-hidden lg:fixed lg:right-6 lg:top-[140px] lg:w-[380px] lg:max-w-none lg:h-[calc(100vh-160px)] flex flex-col shadow-lg border-2">
-                  <CardHeader className="pb-2 py-3 flex-shrink-0">
-                    <CardTitle className="text-sm md:text-base flex items-center gap-2">
-                      <Tag className="h-4 w-4" />
-                      Annotation Details
-                    </CardTitle>
+                <div
+                  ref={panelRef}
+                  className="w-full max-w-[100vw] overflow-hidden lg:fixed lg:z-30"
+                  style={!isMobile ? {
+                    left: `${panelPos.x}px`,
+                    top: `${panelPos.y}px`,
+                    width: `${panelSize.w}px`,
+                    height: `${panelSize.h}px`,
+                  } : {}}
+                >
+                <Card className="h-full flex flex-col shadow-lg border-2 bg-white">
+                  <CardHeader
+                    className="pb-2 py-2 flex-shrink-0 cursor-grab active:cursor-grabbing select-none"
+                    onMouseDown={handlePanelDragStart}
+                    onTouchStart={handlePanelDragStartTouch}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <GripHorizontal className="h-4 w-4 text-gray-400 hidden lg:block" />
+                        <CardTitle className="text-xs md:text-sm flex items-center gap-1.5">
+                          <Tag className="h-3.5 w-3.5" />
+                          Annotation Details
+                        </CardTitle>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          onClick={(e) => { e.stopPropagation(); setIsSidebarOpen(false) }}
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs gap-1"
+                          title="Hide panel"
+                        >
+                          <Minimize2 className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Hide Panel</span>
+                        </Button>
+                      </div>
+                    </div>
                   </CardHeader>
               <CardContent className="space-y-3 flex-1 overflow-y-auto">
                 {/* Info message */}
@@ -1433,34 +1572,35 @@ export function PhotoAnnotator({
                   </div>
                 </div>
                   </CardContent>
+                  {/* Resize Handle (desktop only) */}
+                  <div
+                    className="hidden lg:flex items-center justify-center h-3 cursor-se-resize hover:bg-gray-100 border-t flex-shrink-0"
+                    onMouseDown={handlePanelResizeStart}
+                    onTouchStart={handlePanelResizeStartTouch}
+                  >
+                    <svg width="10" height="6" viewBox="0 0 10 6" className="text-gray-400">
+                      <path d="M0 6L6 0M4 6L10 0" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                    </svg>
+                  </div>
                 </Card>
+                </div>
               )}
             </div>
 
-            {/* Toggle Button */}
-            <Button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              variant="outline"
-              size="sm"
-              className="absolute top-2 right-2 z-20"
-              title={isSidebarOpen ? "Hide details panel" : "Show details panel"}
-            >
-              {isSidebarOpen ? (
-                <>
-                  <svg className="h-4 w-4 mr-1 md:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                  <span className="hidden sm:inline">Hide Panel</span>
-                  <span className="sm:hidden">Hide</span>
-                </>
-              ) : (
-                <>
-                  <Tag className="h-4 w-4 mr-1 md:mr-2" />
-                  <span className="hidden sm:inline">Show Panel</span>
-                  <span className="sm:hidden">Show</span>
-                </>
-              )}
-            </Button>
+            {/* Toggle Button - Fixed floating on desktop when panel is closed */}
+            {!isSidebarOpen && (
+              <Button
+                onClick={() => setIsSidebarOpen(true)}
+                variant="outline"
+                size="sm"
+                className="lg:fixed lg:right-6 lg:top-[80px] lg:z-40 absolute top-2 right-2 z-20 shadow-md bg-white"
+                title="Show details panel"
+              >
+                <PanelRightOpen className="h-4 w-4 mr-1 md:mr-2" />
+                <span className="hidden sm:inline">Show Panel</span>
+                <span className="sm:hidden">Show</span>
+              </Button>
+            )}
           </div>
 
 
