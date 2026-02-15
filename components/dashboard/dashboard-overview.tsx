@@ -5,6 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import {
   Users,
+  FolderOpen,
+  Camera,
+  FileText,
   Plus,
   ArrowRight
 } from "lucide-react"
@@ -35,6 +38,65 @@ export function DashboardOverview({ clients, user }: DashboardOverviewProps) {
           </Link>
         </Button>
       </div>
+
+      {/* Quick Actions */}
+      <Card style={{ backgroundColor: '#ffffff', borderColor: '#c47004', borderWidth: '1px' }}>
+        <CardHeader>
+          <CardTitle style={{ color: '#412501' }}>Quick Actions</CardTitle>
+          <CardDescription style={{ color: '#8b4513' }}>Common tasks to help you work efficiently</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Button variant="outline" className="h-auto p-4 justify-start" asChild>
+              <Link href="/dashboard/clients/new">
+                <div>
+                  <Plus className="h-5 w-5 mb-2" />
+                  <div className="text-left">
+                    <p className="font-medium">New Client</p>
+                    <p className="text-sm text-gray-600">Add a new client</p>
+                  </div>
+                </div>
+              </Link>
+            </Button>
+
+            <Button variant="outline" className="h-auto p-4 justify-start" asChild>
+              <Link href="/dashboard/projects/new">
+                <div>
+                  <FolderOpen className="h-5 w-5 mb-2" />
+                  <div className="text-left">
+                    <p className="font-medium">New Project</p>
+                    <p className="text-sm text-gray-600">Create a new project</p>
+                  </div>
+                </div>
+              </Link>
+            </Button>
+
+            <Button variant="outline" className="h-auto p-4 justify-start" asChild>
+              <Link href="/dashboard/photos/upload">
+                <div>
+                  <Camera className="h-5 w-5 mb-2" />
+                  <div className="text-left">
+                    <p className="font-medium">Upload Photos</p>
+                    <p className="text-sm text-gray-600">Add project images</p>
+                  </div>
+                </div>
+              </Link>
+            </Button>
+
+            <Button variant="outline" className="h-auto p-4 justify-start" asChild>
+              <Link href="/dashboard/synopsis">
+                <div>
+                  <FileText className="h-5 w-5 mb-2" />
+                  <div className="text-left">
+                    <p className="font-medium">Color Synopsis</p>
+                    <p className="text-sm text-gray-600">Generate reports</p>
+                  </div>
+                </div>
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Recent Clients */}
       <Card style={{ backgroundColor: '#ffffff', borderColor: '#f97316', borderWidth: '1px' }}>
