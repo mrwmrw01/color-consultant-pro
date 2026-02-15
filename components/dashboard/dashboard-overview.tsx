@@ -3,7 +3,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   Users,
   FolderOpen,
@@ -13,22 +12,13 @@ import {
   ArrowRight
 } from "lucide-react"
 import Link from "next/link"
-import { motion } from "framer-motion"
 
 interface DashboardOverviewProps {
   clients: any[]
-  stats: {
-    totalClients: number
-    totalProperties: number
-    totalProjects: number
-    totalPhotos: number
-    activeProjects: number
-    totalColors: number
-  }
   user: any
 }
 
-export function DashboardOverview({ clients, stats, user }: DashboardOverviewProps) {
+export function DashboardOverview({ clients, user }: DashboardOverviewProps) {
   return (
     <div className="space-y-8" style={{ backgroundColor: '#fef3e8', padding: '2rem', borderRadius: '0.5rem' }}>
       {/* Welcome Header */}
