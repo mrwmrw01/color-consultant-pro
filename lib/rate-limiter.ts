@@ -7,15 +7,15 @@
  * - Different limits for different operations
  * - Redis-backed for distributed systems
  * - Automatic reset on schedule
- * - Circuit breaker pattern for Redis failures (fails CLOSED for safety)
+ * - Graceful degradation when Redis is unavailable (fails OPEN - allows requests)
  */
 
 import Redis from 'ioredis'
-import { RateLimiterRedis, RateLimiterRes } from 'rate-limiter-flexible'
+import { RateLimiterRedis, RateLimiterMemory, RateLimiterRes } from 'rate-limiter-flexible'
 
 // Circuit breaker state for Redis connection
 interface CircuitBreakerState {
-  isOpen: boolean        // true = Redis is down, blocking requests
+  isOpen: boolean        // true = Redis is down
   failureCount: number   // consecutive failures
   lastFailureTime: number
   lastCheckTime: number
@@ -34,61 +34,75 @@ const CIRCUIT_BREAKER_TIMEOUT = 30000      // 30 seconds before retry
 const CIRCUIT_BREAKER_CHECK_INTERVAL = 5000 // 5 seconds between health checks
 
 // Track Redis health status
-let redisHealthy = true
+let redisHealthy = false
 let lastHealthCheck = 0
 
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-  enableOfflineQueue: false,
-  maxRetriesPerRequest: 1,
-  retryStrategy: () => null, // Don't auto-retry, we handle it manually
-})
+// Lazy-initialized Redis client
+let _redis: Redis | null = null
 
-redis.on('error', (err) => {
-  console.error('[Redis] Connection error:', err.message)
-  redisHealthy = false
-  circuitBreaker.failureCount++
-  circuitBreaker.lastFailureTime = Date.now()
-  
-  // Open circuit if threshold reached
-  if (circuitBreaker.failureCount >= CIRCUIT_BREAKER_THRESHOLD) {
-    if (!circuitBreaker.isOpen) {
-      console.error('[Circuit Breaker] OPENED - Redis unavailable, blocking rate-limited operations')
-    }
-    circuitBreaker.isOpen = true
+function getRedis(): Redis | null {
+  if (_redis) return _redis
+
+  try {
+    _redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+      enableOfflineQueue: false,
+      maxRetriesPerRequest: 1,
+      retryStrategy: () => null, // Don't auto-retry, we handle it manually
+      lazyConnect: true,
+    })
+
+    _redis.on('error', (err) => {
+      if (redisHealthy) {
+        console.warn('[Redis] Connection error:', err.message)
+      }
+      redisHealthy = false
+      circuitBreaker.failureCount++
+      circuitBreaker.lastFailureTime = Date.now()
+
+      if (circuitBreaker.failureCount >= CIRCUIT_BREAKER_THRESHOLD) {
+        circuitBreaker.isOpen = true
+      }
+    })
+
+    _redis.on('connect', () => {
+      console.log('[Redis] Connected successfully')
+      redisHealthy = true
+      circuitBreaker.isOpen = false
+      circuitBreaker.failureCount = 0
+    })
+
+    // Attempt connection but don't block
+    _redis.connect().catch(() => {
+      redisHealthy = false
+    })
+
+    return _redis
+  } catch {
+    return null
   }
-})
-
-redis.on('connect', () => {
-  console.log('[Redis] Connected successfully')
-  redisHealthy = true
-  circuitBreaker.isOpen = false
-  circuitBreaker.failureCount = 0
-})
-
-redis.on('reconnecting', () => {
-  console.log('[Redis] Attempting to reconnect...')
-})
+}
 
 /**
  * Check if Redis is healthy with circuit breaker logic
- * Fails CLOSED (returns false) when Redis is down to prevent cost overruns
  */
 async function isRedisHealthy(): Promise<boolean> {
+  const redis = getRedis()
+  if (!redis) return false
+
   const now = Date.now()
-  
+
   // If circuit is open, check if we should attempt reset
   if (circuitBreaker.isOpen) {
     const timeSinceLastFailure = now - circuitBreaker.lastFailureTime
-    
+
     // Only check health after timeout period
     if (timeSinceLastFailure < CIRCUIT_BREAKER_TIMEOUT) {
       return false
     }
-    
+
     // Try to ping Redis to see if it's back
     try {
       await redis.ping()
-      console.log('[Circuit Breaker] CLOSED - Redis is back online')
       circuitBreaker.isOpen = false
       circuitBreaker.failureCount = 0
       redisHealthy = true
@@ -98,29 +112,28 @@ async function isRedisHealthy(): Promise<boolean> {
       return false
     }
   }
-  
+
   // Rate limit health checks
   if (now - lastHealthCheck < CIRCUIT_BREAKER_CHECK_INTERVAL) {
     return redisHealthy
   }
-  
+
   lastHealthCheck = now
-  
+
   try {
     await redis.ping()
     redisHealthy = true
     circuitBreaker.failureCount = 0
     return true
-  } catch (err) {
+  } catch {
     redisHealthy = false
     circuitBreaker.failureCount++
     circuitBreaker.lastFailureTime = now
-    
+
     if (circuitBreaker.failureCount >= CIRCUIT_BREAKER_THRESHOLD) {
       circuitBreaker.isOpen = true
-      console.error('[Circuit Breaker] OPENED - Too many Redis failures')
     }
-    
+
     return false
   }
 }
@@ -134,87 +147,87 @@ export interface RateLimitResult {
 }
 
 /**
- * Rate limiters for different operations
+ * Lazy-initialized rate limiters
  */
+interface LazyLimiter {
+  keyPrefix: string
+  points: number
+  duration: number
+}
+
+function createLimiterConfig(keyPrefix: string, points: number, duration: number): LazyLimiter {
+  return { keyPrefix, points, duration }
+}
 
 // General API requests: 100 per minute
-export const apiLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:api',
-  points: 100, // Number of requests
-  duration: 60, // Per 60 seconds
-  blockDuration: 0, // Don't block, just reject
-})
+export const apiLimiter = createLimiterConfig('rl:api', 100, 60)
 
 // Photo uploads: 20 per hour (expensive operation)
-export const uploadLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:upload',
-  points: 20,
-  duration: 60 * 60, // Per hour
-  blockDuration: 0,
-})
+export const uploadLimiter = createLimiterConfig('rl:upload', 20, 60 * 60)
 
 // Synopsis generation: 10 per hour (expensive operation)
-export const synopsisLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:synopsis',
-  points: 10,
-  duration: 60 * 60,
-  blockDuration: 0,
-})
+export const synopsisLimiter = createLimiterConfig('rl:synopsis', 10, 60 * 60)
 
 // Presigned URL generation: 500 per hour
-export const presignedUrlLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:presigned',
-  points: 500,
-  duration: 60 * 60,
-  blockDuration: 0,
-})
+export const presignedUrlLimiter = createLimiterConfig('rl:presigned', 500, 60 * 60)
 
 // AI suggestions: 30 per hour
-export const aiSuggestionsLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:ai',
-  points: 30,
-  duration: 60 * 60,
-  blockDuration: 0,
-})
+export const aiSuggestionsLimiter = createLimiterConfig('rl:ai', 30, 60 * 60)
 
 // Annotation operations: 200 per hour
-export const annotationLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:annotation',
-  points: 200,
-  duration: 60 * 60,
-  blockDuration: 0,
-})
+export const annotationLimiter = createLimiterConfig('rl:annotation', 200, 60 * 60)
+
+// Cache for instantiated Redis-based limiters
+const _redisLimiters = new Map<string, RateLimiterRedis>()
+// Fallback in-memory limiters when Redis is unavailable
+const _memoryLimiters = new Map<string, RateLimiterMemory>()
+
+function getRedisLimiter(config: LazyLimiter): RateLimiterRedis | null {
+  const redis = getRedis()
+  if (!redis) return null
+
+  if (!_redisLimiters.has(config.keyPrefix)) {
+    _redisLimiters.set(config.keyPrefix, new RateLimiterRedis({
+      storeClient: redis,
+      keyPrefix: config.keyPrefix,
+      points: config.points,
+      duration: config.duration,
+      blockDuration: 0,
+    }))
+  }
+  return _redisLimiters.get(config.keyPrefix)!
+}
+
+function getMemoryLimiter(config: LazyLimiter): RateLimiterMemory {
+  if (!_memoryLimiters.has(config.keyPrefix)) {
+    _memoryLimiters.set(config.keyPrefix, new RateLimiterMemory({
+      keyPrefix: config.keyPrefix,
+      points: config.points,
+      duration: config.duration,
+    }))
+  }
+  return _memoryLimiters.get(config.keyPrefix)!
+}
 
 /**
  * Check rate limit and consume a point
- * FAILS CLOSED when Redis is down (blocks expensive operations)
+ * Falls back to in-memory rate limiting when Redis is unavailable
  */
 export async function checkRateLimit(
   userId: string,
-  limiter: RateLimiterRedis
+  limiter: LazyLimiter
 ): Promise<RateLimitResult> {
-  // Check circuit breaker first
   const healthy = await isRedisHealthy()
-  
-  if (!healthy) {
-    console.warn('[Rate Limiter] Circuit breaker OPEN - blocking request')
-    return {
-      allowed: false,
-      remaining: 0,
-      resetAt: new Date(Date.now() + CIRCUIT_BREAKER_TIMEOUT),
-      retryAfter: Math.ceil(CIRCUIT_BREAKER_TIMEOUT / 1000),
-      circuitOpen: true,
-    }
-  }
-  
+
+  // Use Redis limiter if available, otherwise fall back to in-memory
+  const activeLimiter = healthy
+    ? getRedisLimiter(limiter)
+    : null
+
+  const effectiveLimiter = activeLimiter || getMemoryLimiter(limiter)
+
   try {
-    const result: RateLimiterRes = await limiter.consume(userId)
+    const result: RateLimiterRes = await effectiveLimiter.consume(userId)
 
     return {
       allowed: true,
@@ -232,22 +245,12 @@ export async function checkRateLimit(
       }
     }
 
-    // Unexpected error - open circuit breaker for safety
-    console.error('[Rate Limiter] Unexpected error:', error)
-    circuitBreaker.failureCount++
-    circuitBreaker.lastFailureTime = Date.now()
-    
-    if (circuitBreaker.failureCount >= CIRCUIT_BREAKER_THRESHOLD) {
-      circuitBreaker.isOpen = true
-      console.error('[Circuit Breaker] OPENED due to rate limiter errors')
-    }
-    
-    // Fail closed for safety
+    // Unexpected error - allow request through (fail open)
+    console.error('[Rate Limiter] Unexpected error, allowing request:', error)
     return {
-      allowed: false,
+      allowed: true,
       remaining: 0,
-      resetAt: new Date(Date.now() + CIRCUIT_BREAKER_TIMEOUT),
-      retryAfter: Math.ceil(CIRCUIT_BREAKER_TIMEOUT / 1000),
+      resetAt: new Date(),
       circuitOpen: true,
     }
   }
@@ -255,30 +258,36 @@ export async function checkRateLimit(
 
 /**
  * Check rate limit without consuming a point
- * Returns "allowed" status even if circuit is open (for status checks)
  */
 export async function getRateLimitStatus(
   userId: string,
-  limiter: RateLimiterRedis
+  limiter: LazyLimiter
 ): Promise<RateLimitResult> {
-  // Check circuit breaker
   const healthy = await isRedisHealthy()
-  
+
   if (!healthy) {
-    // For status checks, we return optimistic values but mark circuit as open
     return {
-      allowed: true, // Allow status checks
-      remaining: 0,
-      resetAt: new Date(Date.now() + CIRCUIT_BREAKER_TIMEOUT),
+      allowed: true,
+      remaining: limiter.points,
+      resetAt: new Date(Date.now() + limiter.duration * 1000),
       circuitOpen: true,
     }
   }
-  
+
+  const redisLimiter = getRedisLimiter(limiter)
+  if (!redisLimiter) {
+    return {
+      allowed: true,
+      remaining: limiter.points,
+      resetAt: new Date(Date.now() + limiter.duration * 1000),
+      circuitOpen: true,
+    }
+  }
+
   try {
-    const result = await limiter.get(userId)
+    const result = await redisLimiter.get(userId)
 
     if (!result) {
-      // No usage yet
       return {
         allowed: true,
         remaining: limiter.points,
@@ -293,10 +302,8 @@ export async function getRateLimitStatus(
     }
   } catch (error) {
     console.error('[Rate Limiter] Error getting status:', error)
-    circuitBreaker.failureCount++
-    
     return {
-      allowed: true, // Allow on error for status checks
+      allowed: true,
       remaining: 0,
       resetAt: new Date(),
       circuitOpen: true,
@@ -309,17 +316,21 @@ export async function getRateLimitStatus(
  */
 export async function resetRateLimit(
   userId: string,
-  limiter: RateLimiterRedis
+  limiter: LazyLimiter
 ): Promise<void> {
-  // Check circuit breaker
   const healthy = await isRedisHealthy()
   if (!healthy) {
     console.error('[Rate Limiter] Cannot reset - Redis unavailable')
     throw new Error('Redis unavailable - cannot reset rate limit')
   }
-  
+
+  const redisLimiter = getRedisLimiter(limiter)
+  if (!redisLimiter) {
+    throw new Error('Redis unavailable - cannot reset rate limit')
+  }
+
   try {
-    await limiter.delete(userId)
+    await redisLimiter.delete(userId)
     console.log(`[Rate Limiter] Reset limit for user ${userId}`)
   } catch (error) {
     console.error('[Rate Limiter] Error resetting:', error)
@@ -379,7 +390,6 @@ export function getCircuitBreakerStatus(): {
  */
 export function getRateLimitHeaders(result: RateLimitResult): Record<string, string> {
   return {
-    'X-RateLimit-Limit': '100', // Adjust based on limiter
     'X-RateLimit-Remaining': String(result.remaining),
     'X-RateLimit-Reset': String(Math.floor(result.resetAt.getTime() / 1000)),
     ...(result.retryAfter

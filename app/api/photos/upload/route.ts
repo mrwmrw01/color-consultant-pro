@@ -16,8 +16,19 @@ import { createS3Client, getBucketConfig } from "@/lib/aws-config"
 
 export const dynamic = "force-dynamic"
 
-const s3Client = createS3Client()
-const { bucketName, folderPrefix } = getBucketConfig()
+// Lazy initialization - only create S3 client when the route is actually called
+let _s3Client: ReturnType<typeof createS3Client> | null = null
+let _bucketConfig: ReturnType<typeof getBucketConfig> | null = null
+
+function getS3() {
+  if (!_s3Client) _s3Client = createS3Client()
+  return _s3Client
+}
+
+function getBucket() {
+  if (!_bucketConfig) _bucketConfig = getBucketConfig()
+  return _bucketConfig
+}
 
 // Track uploaded S3 keys for potential cleanup
 interface UploadedS3File {
@@ -29,6 +40,7 @@ interface UploadedS3File {
  * Upload a single file to S3
  */
 async function uploadToS3(buffer: Buffer, key: string, contentType: string): Promise<string> {
+  const { bucketName } = getBucket()
   const command = new PutObjectCommand({
     Bucket: bucketName,
     Key: key,
@@ -36,7 +48,7 @@ async function uploadToS3(buffer: Buffer, key: string, contentType: string): Pro
     ContentType: contentType
   })
 
-  await s3Client.send(command)
+  await getS3().send(command)
   return key
 }
 
@@ -156,7 +168,8 @@ export async function POST(request: NextRequest) {
       // Upload all 3 sizes to S3
       const timestamp = Date.now()
       const baseFileName = file.name.replace(/\.[^/.]+$/, '') // Remove extension
-      
+      const { folderPrefix } = getBucket()
+
       // Track S3 keys for potential cleanup
       const uploadedS3Keys: string[] = []
       let largePath = ''

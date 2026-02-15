@@ -8,7 +8,7 @@ import {
   getRalphQuote,
   type SuggestionContext
 } from "@/lib/ralph-wiggum-suggester"
-import { checkRateLimit, aiSuggestionsLimiter, getRateLimitHeaders } from "@/lib/rate-limiter"
+import { checkRateLimit, aiSuggestionsLimiter, getRateLimitHeaders, getRateLimitStatus } from "@/lib/rate-limiter"
 
 export const dynamic = "force-dynamic"
 
@@ -149,15 +149,15 @@ export async function GET(request: NextRequest) {
     const aiEnabled = process.env.FEATURE_AI_SUGGESTIONS !== 'false'
 
     // Get rate limit status
-    const rateLimitStatus = await aiSuggestionsLimiter.get(session.user.id)
+    const rateLimitStatus = await getRateLimitStatus(session.user.id, aiSuggestionsLimiter)
 
     return NextResponse.json({
       enabled: aiEnabled,
       tier: userTier,
       rateLimit: {
-        remaining: rateLimitStatus?.remainingPoints || aiSuggestionsLimiter.points,
+        remaining: rateLimitStatus.remaining,
         total: aiSuggestionsLimiter.points,
-        resetIn: rateLimitStatus?.msBeforeNext || 0
+        resetIn: rateLimitStatus.resetAt.getTime() - Date.now()
       },
       ralphQuote: getRalphQuote()
     })
