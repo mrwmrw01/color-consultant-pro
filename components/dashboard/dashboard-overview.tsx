@@ -4,14 +4,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { 
-  Users, 
-  Building2, 
-  FolderOpen, 
-  Camera, 
-  Palette, 
-  FileText, 
-  Plus, 
+import {
+  Users,
+  FolderOpen,
+  Camera,
+  FileText,
+  Plus,
   ArrowRight
 } from "lucide-react"
 import Link from "next/link"
@@ -49,49 +47,6 @@ export function DashboardOverview({ clients, stats, user }: DashboardOverviewPro
             New Client
           </Link>
         </Button>
-      </div>
-
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card style={{ backgroundColor: '#ffffff', borderColor: '#c47004', borderWidth: '1px' }}>
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center text-center">
-              <Users className="h-8 w-8 mb-2" style={{ color: '#c47004' }} />
-              <p className="text-2xl font-bold" style={{ color: '#412501' }}>{stats.totalClients}</p>
-              <p className="text-xs" style={{ color: '#8b4513' }}>Clients</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card style={{ backgroundColor: '#ffffff', borderColor: '#d2691e', borderWidth: '1px' }}>
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center text-center">
-              <Building2 className="h-8 w-8 mb-2" style={{ color: '#d2691e' }} />
-              <p className="text-2xl font-bold" style={{ color: '#412501' }}>{stats.totalProperties}</p>
-              <p className="text-xs" style={{ color: '#8b4513' }}>Properties</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card style={{ backgroundColor: '#ffffff', borderColor: '#f97316', borderWidth: '1px' }}>
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center text-center">
-              <FolderOpen className="h-8 w-8 mb-2" style={{ color: '#f97316' }} />
-              <p className="text-2xl font-bold" style={{ color: '#412501' }}>{stats.totalProjects}</p>
-              <p className="text-xs" style={{ color: '#8b4513' }}>Projects</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card style={{ backgroundColor: '#ffffff', borderColor: '#8b4513', borderWidth: '1px' }}>
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center text-center">
-              <FolderOpen className="h-8 w-8 mb-2" style={{ color: '#8b4513' }} />
-              <p className="text-2xl font-bold" style={{ color: '#412501' }}>{stats.activeProjects}</p>
-              <p className="text-xs" style={{ color: '#8b4513' }}>Active</p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Quick Actions */}
