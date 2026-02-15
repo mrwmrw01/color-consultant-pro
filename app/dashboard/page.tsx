@@ -28,32 +28,18 @@ export default async function DashboardPage() {
       }
     }),
     prisma.project.count({
-      where: { 
-        property: {
-          client: {
-            userId: session.user.id
-          }
-        }
-      }
+      where: { userId: session.user.id }
     }),
     prisma.photo.count({
       where: {
         project: {
-          property: {
-            client: {
-              userId: session.user.id
-            }
-          }
+          userId: session.user.id
         }
       }
     }),
     prisma.project.count({
-      where: { 
-        property: {
-          client: {
-            userId: session.user.id
-          }
-        },
+      where: {
+        userId: session.user.id,
         status: 'active'
       }
     }),
