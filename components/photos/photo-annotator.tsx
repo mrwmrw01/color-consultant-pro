@@ -1332,7 +1332,7 @@ export function PhotoAnnotator({
                           <SelectValue placeholder="Select color..." />
                         </SelectTrigger>
                         <SelectContent className="max-h-60">
-                          {sortedColors.slice(0, 20).map(color => (
+                          {sortedColors.map(color => (
                             <SelectItem key={color.id} value={color.id}>
                               <div className="flex items-center gap-2">
                                 <div
@@ -1687,7 +1687,7 @@ export function PhotoAnnotator({
                     </SelectTrigger>
                     <SelectContent className="max-h-60">
                       <SelectItem value="none">None</SelectItem>
-                      {sortedColors.slice(0, 20).map(color => (
+                      {sortedColors.map(color => (
                         <SelectItem key={color.id} value={color.id}>
                           <div className="flex items-center gap-2">
                             <div
