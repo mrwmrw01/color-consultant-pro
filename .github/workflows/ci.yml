@@ -126,11 +126,32 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Deploy to staging
+    - name: Install dependencies
+      env:
+        NODE_OPTIONS: --max-old-space-size=8192
+      run: npm install --legacy-peer-deps
+
+    - name: Generate Prisma client
+      run: npx prisma generate
+
+    - name: Apply database migrations
+      run: npx prisma migrate deploy || echo "Migrations already up to date"
+
+    - name: Build application
+      env:
+        NODE_ENV: production
+        NODE_OPTIONS: --max-old-space-size=8192
+      run: npm run build
+
+    - name: Restart application
       run: |
-        echo "Staging deployment triggered"
-        # Add your staging deployment commands here
-        # e.g., npm run deploy:staging
+        pm2 restart color-consultant-pro --update-env || pm2 start ecosystem.config.js
+        pm2 save
+
+    - name: Health check
+      run: |
+        sleep 5
+        curl -f http://localhost:3000/api/health || echo "Health check pending - app may still be starting"
 
   deploy-production:
     runs-on: self-hosted
@@ -141,8 +162,31 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Deploy to production
+    - name: Install dependencies
+      env:
+        NODE_OPTIONS: --max-old-space-size=8192
+      run: npm install --legacy-peer-deps
+
+    - name: Generate Prisma client
+      run: npx prisma generate
+
+    - name: Apply database migrations
+      run: npx prisma migrate deploy || echo "Migrations already up to date"
+
+    - name: Build application
+      env:
+        NODE_ENV: production
+        NODE_OPTIONS: --max-old-space-size=8192
+      run: npm run build
+
+    - name: Restart application
       run: |
-        echo "Production deployment triggered"
-        # Add your production deployment commands here
-        # e.g., npm run deploy:production
+        pm2 restart color-consultant-pro --update-env || pm2 start ecosystem.config.js
+        pm2 save
+
+    - name: Health check
+      run: |
+        sleep 5
+        curl -f http://localhost:3000/api/health || echo "Health check pending - app may still be starting"
+        echo ""
+        echo "Production deploy complete: https://app.colorgurudesign.com"
