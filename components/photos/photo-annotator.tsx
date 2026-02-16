@@ -35,6 +35,7 @@ import { AnnotationToolbar } from "./annotation-toolbar"
 import { DraggableZoomControls } from "./draggable-zoom-controls"
 import { MobileBottomSheet } from "./mobile-bottom-sheet"
 import { AddCustomColorDialog } from "@/components/colors/add-custom-color-dialog"
+import { ColorCombobox } from "@/components/colors/color-combobox"
 import { QuickAddRoom } from "@/components/projects/quick-add-room"
 import { RecentColorsPicker } from "@/components/colors/recent-colors-picker"
 import { FavoritesSection } from "@/components/colors/favorites-section"
@@ -1287,26 +1288,14 @@ export function PhotoAnnotator({
                   <Label htmlFor="colorId" className="text-xs">Color (Optional)</Label>
                   <div className="flex gap-1.5">
                     <div className="flex-1">
-                      <Select value={selectedColorId} onValueChange={setSelectedColorId}>
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Select color..." />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          {sortedColors.slice(0, 20).map(color => (
-                            <SelectItem key={color.id} value={color.id}>
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className="w-4 h-4 rounded border"
-                                  style={{ backgroundColor: color.hexColor || '#f3f4f6' }}
-                                />
-                                <span className="text-sm">{color.name} ({color.manufacturer})</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <ColorCombobox
+                        colors={sortedColors}
+                        value={selectedColorId}
+                        onValueChange={setSelectedColorId}
+                        triggerClassName="h-9"
+                      />
                     </div>
-                    <Button 
+                    <Button
                       type="button"
                       variant="outline"
                       size="sm"
@@ -1317,7 +1306,7 @@ export function PhotoAnnotator({
                       <Palette className="h-4 w-4" />
                     </Button>
                     <AddCustomColorDialog onColorAdded={handleColorAdded}>
-                      <Button 
+                      <Button
                         type="button"
                         variant="outline"
                         size="sm"
@@ -1642,27 +1631,14 @@ export function PhotoAnnotator({
               <Label htmlFor="mobileColorId">Color</Label>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <Select value={selectedColorId || "none"} onValueChange={(val) => setSelectedColorId(val === "none" ? "" : val)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select color..." />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      <SelectItem value="none">None</SelectItem>
-                      {sortedColors.slice(0, 20).map(color => (
-                        <SelectItem key={color.id} value={color.id}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-4 h-4 rounded border"
-                              style={{ backgroundColor: color.hexColor || '#f3f4f6' }}
-                            />
-                            <span className="text-sm">{color.name} ({color.manufacturer})</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ColorCombobox
+                    colors={sortedColors}
+                    value={selectedColorId}
+                    onValueChange={setSelectedColorId}
+                    allowNone
+                  />
                 </div>
-                <Button 
+                <Button
                   type="button"
                   variant="outline"
                   onClick={() => {
@@ -1675,7 +1651,7 @@ export function PhotoAnnotator({
                   <Palette className="h-4 w-4" />
                 </Button>
                 <AddCustomColorDialog onColorAdded={handleColorAdded}>
-                  <Button 
+                  <Button
                     type="button"
                     variant="outline"
                     title="Add custom color"
@@ -1842,29 +1818,13 @@ export function PhotoAnnotator({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="editColor">Color</Label>
-              <Select 
-                value={editForm.colorId} 
-                onValueChange={(value) => {
-                  setEditForm(prev => ({ ...prev, colorId: value, productLine: '', sheen: '' }))
+              <ColorCombobox
+                colors={sortedColors}
+                value={editForm.colorId}
+                onValueChange={(colorId) => {
+                  setEditForm(prev => ({ ...prev, colorId, productLine: '', sheen: '' }))
                 }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select color..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {sortedColors.map(color => (
-                    <SelectItem key={color.id} value={color.id}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-4 h-4 rounded border"
-                          style={{ backgroundColor: color.hexColor || '#f3f4f6' }}
-                        />
-                        <span className="text-sm">{color.name} - {color.manufacturer}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             </div>
 
             {/* Room Selection for Edit Dialog */}
