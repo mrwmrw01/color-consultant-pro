@@ -30,6 +30,9 @@ export function DashboardOverview({ clients, user }: DashboardOverviewProps) {
           <p className="mt-1" style={{ color: '#8b4513' }}>
             Here's what's happening with your consultations today
           </p>
+          <p className="mt-1 text-xs font-bold" style={{ color: 'red' }}>
+            [v2 - cards removed]
+          </p>
         </div>
         <Button asChild className="w-full lg:w-auto" style={{ backgroundColor: '#c47004' }}>
           <Link href="/dashboard/clients/new">
