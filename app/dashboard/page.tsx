@@ -1,5 +1,4 @@
 
-
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
@@ -15,19 +14,33 @@ export default async function DashboardPage() {
     redirect("/auth/signin")
   }
 
-  // Get recent clients
-  const clients = await prisma.client.findMany({
-    where: { userId: session.user.id },
-    orderBy: { updatedAt: "desc" },
-    take: 5,
-    include: {
-      _count: {
-        select: {
-          properties: true
+  // Get counts and recent clients in parallel
+  const [clients, clientCount, propertyCount, projectCount, activeProjectCount] = await Promise.all([
+    prisma.client.findMany({
+      where: { userId: session.user.id },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      include: {
+        _count: {
+          select: {
+            properties: true
+          }
         }
       }
-    }
-  })
+    }),
+    prisma.client.count({ where: { userId: session.user.id } }),
+    prisma.property.count({
+      where: { client: { userId: session.user.id } }
+    }),
+    prisma.project.count({ where: { userId: session.user.id } }),
+    prisma.project.count({ where: { userId: session.user.id, status: "active" } }),
+  ])
 
-  return <DashboardOverview clients={clients} user={session.user} />
+  return (
+    <DashboardOverview
+      clients={clients}
+      user={session.user}
+      stats={{ clientCount, propertyCount, projectCount, activeProjectCount }}
+    />
+  )
 }

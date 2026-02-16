@@ -5,7 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import {
   Users,
+  Building2,
   FolderOpen,
+  Activity,
   Camera,
   FileText,
   Plus,
@@ -13,12 +15,20 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 
+interface DashboardStats {
+  clientCount: number
+  propertyCount: number
+  projectCount: number
+  activeProjectCount: number
+}
+
 interface DashboardOverviewProps {
   clients: any[]
   user: any
+  stats: DashboardStats
 }
 
-export function DashboardOverview({ clients, user }: DashboardOverviewProps) {
+export function DashboardOverview({ clients, user, stats }: DashboardOverviewProps) {
   return (
     <div className="space-y-8" style={{ backgroundColor: '#fef3e8', padding: '2rem', borderRadius: '0.5rem' }}>
       {/* Welcome Header */}
@@ -37,6 +47,26 @@ export function DashboardOverview({ clients, user }: DashboardOverviewProps) {
             New Client
           </Link>
         </Button>
+      </div>
+
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: "Clients", value: stats.clientCount, icon: Users, href: "/dashboard/clients" },
+          { label: "Properties", value: stats.propertyCount, icon: Building2, href: "/dashboard/properties/maintenance" },
+          { label: "Projects", value: stats.projectCount, icon: FolderOpen, href: "/dashboard/projects" },
+          { label: "Active", value: stats.activeProjectCount, icon: Activity, href: "/dashboard/projects" },
+        ].map((stat) => (
+          <Link key={stat.label} href={stat.href}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer" style={{ backgroundColor: '#ffffff', borderColor: '#c47004', borderWidth: '1px' }}>
+              <CardContent className="flex flex-col items-center justify-center p-6">
+                <stat.icon className="h-8 w-8 mb-2" style={{ color: '#c47004' }} />
+                <p className="text-3xl font-bold" style={{ color: '#412501' }}>{stat.value}</p>
+                <p className="text-sm" style={{ color: '#8b4513' }}>{stat.label}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
 
       {/* Quick Actions */}
