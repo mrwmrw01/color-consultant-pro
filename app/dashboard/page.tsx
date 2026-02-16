@@ -14,33 +14,19 @@ export default async function DashboardPage() {
     redirect("/auth/signin")
   }
 
-  // Get counts and recent clients in parallel
-  const [clients, clientCount, propertyCount, projectCount, activeProjectCount] = await Promise.all([
-    prisma.client.findMany({
-      where: { userId: session.user.id },
-      orderBy: { updatedAt: "desc" },
-      take: 5,
-      include: {
-        _count: {
-          select: {
-            properties: true
-          }
+  // Get recent clients
+  const clients = await prisma.client.findMany({
+    where: { userId: session.user.id },
+    orderBy: { updatedAt: "desc" },
+    take: 5,
+    include: {
+      _count: {
+        select: {
+          properties: true
         }
       }
-    }),
-    prisma.client.count({ where: { userId: session.user.id } }),
-    prisma.property.count({
-      where: { client: { userId: session.user.id } }
-    }),
-    prisma.project.count({ where: { userId: session.user.id } }),
-    prisma.project.count({ where: { userId: session.user.id, status: "active" } }),
-  ])
+    }
+  })
 
-  return (
-    <DashboardOverview
-      clients={clients}
-      user={session.user}
-      stats={{ clientCount, propertyCount, projectCount, activeProjectCount }}
-    />
-  )
+  return <DashboardOverview clients={clients} user={session.user} />
 }
