@@ -1,5 +1,6 @@
 
 import { prisma } from "@/lib/db"
+import { Annotation, Color, ColorAvailability, Room } from "@prisma/client"
 
 export interface SynopsisData {
   project: {
@@ -32,6 +33,17 @@ export interface SynopsisData {
       }>
     }>
   }>
+}
+
+interface AnnotationWithPhoto extends Annotation {
+  photoId: string
+  photoCloudStoragePath: string
+  photoFileName: string
+  productLine: string
+  sheen: string
+  color: Color & { availability: ColorAvailability[] }
+  room?: Room | null
+  surfaceType: string // Override as required
 }
 
 export async function generateSynopsisFromAnnotations(projectId: string): Promise<SynopsisData> {
@@ -92,7 +104,7 @@ export async function generateSynopsisFromAnnotations(projectId: string): Promis
   }>>()
 
   // Collect all annotations from photos (with photo reference)
-  const allAnnotations: any[] = []
+  const allAnnotations: AnnotationWithPhoto[] = []
   for (const photo of project.photos) {
     for (const annotation of photo.annotations) {
       // Include annotations that have at least a color and surface type
@@ -115,8 +127,10 @@ export async function generateSynopsisFromAnnotations(projectId: string): Promis
             sheen,
             photoId: photo.id,
             photoCloudStoragePath: photo.cloud_storage_path,
-            photoFileName: photo.filename
-          })
+            photoFileName: photo.filename,
+            color: annotation.color!,
+            surfaceType: annotation.surfaceType!
+          } as AnnotationWithPhoto)
         }
       }
     }
@@ -186,7 +200,7 @@ export async function generateSynopsisFromAnnotations(projectId: string): Promis
       roomDataMap.set(roomName, [])
     }
 
-    const annotationData = annotation.data as any
+    const annotationData = annotation.data as { label?: string, text?: string }
     const roomSurfaces = roomDataMap.get(roomName)!
     
     // Find if we already have this surface/color combination
@@ -216,7 +230,7 @@ export async function generateSynopsisFromAnnotations(projectId: string): Promis
     } else {
       // Create new surface entry
       roomSurfaces.push({
-        surfaceType: annotation.surfaceType,
+        surfaceType: annotation.surfaceType || 'Unknown', // Fallback for safety
         surfaceArea: annotationData?.label || annotationData?.text,
         colorCode: annotation.color.colorCode,
         colorName: annotation.color.name,

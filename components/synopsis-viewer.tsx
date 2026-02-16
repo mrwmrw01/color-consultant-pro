@@ -1,128 +1,39 @@
 
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useRef } from "react"
 import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Download, FileText, Loader2, RefreshCw, ImageIcon, FileDown } from "lucide-react"
 import { toast } from "react-hot-toast"
-import jsPDF from "jspdf"
-import html2canvas from "html2canvas"
+import { useSynopsis } from "@/hooks/use-synopsis"
+import { usePdfExport } from "@/hooks/use-pdf-export"
+import { usePhotoUrls } from "@/hooks/use-photo-urls"
+import { SynopsisData } from "@/lib/synopsis-generator"
 
 interface SynopsisViewerProps {
   projectId: string
 }
 
-interface SynopsisData {
-  project: {
-    id: string
-    name: string
-    clientName: string
-    clientEmail: string | null
-    clientPhone: string | null
-    address: string | null
-  }
-  colorSummary: {
-    trim: Array<{ colorCode: string; name: string; manufacturer: string; productLines: string[] }>
-    ceilings: Array<{ colorCode: string; name: string; manufacturer: string; productLines: string[] }>
-    walls: Array<{ colorCode: string; name: string; manufacturer: string; productLines: string[] }>
-  }
-  roomData: Array<{
-    roomName: string
-    surfaces: Array<{
-      surfaceType: string
-      surfaceArea?: string
-      colorCode: string
-      colorName: string
-      productLine: string
-      sheen: string
-      notes?: string
-      photos: Array<{
-        id: string
-        cloudStoragePath: string
-        fileName: string
-      }>
-    }>
-  }>
-}
-
 export function SynopsisViewer({ projectId }: SynopsisViewerProps) {
-  const [synopsis, setSynopsis] = useState<SynopsisData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [exporting, setExporting] = useState(false)
-  const [exportingPdf, setExportingPdf] = useState(false)
-  const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; fileName: string } | null>(null)
-  const [photoUrls, setPhotoUrls] = useState<Map<string, string>>(new Map())
+  const { data: synopsis, isLoading, refetch, isRefetching } = useSynopsis(projectId)
+  const photoUrls = usePhotoUrls(synopsis)
   const synopsisRef = useRef<HTMLDivElement>(null)
+  
+  const { exportPdf, isExporting: exportingPdf } = usePdfExport({ 
+    synopsis: synopsis || null, 
+    elementRef: synopsisRef, 
+    photoUrls 
+  })
 
-  useEffect(() => {
-    loadSynopsis()
-  }, [projectId])
-
-  const loadSynopsis = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch(`/api/projects/${projectId}/synopsis/generate`, {
-        method: "POST"
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to generate synopsis")
-      }
-
-      const data = await response.json()
-      setSynopsis(data)
-
-      // Collect all unique photo IDs
-      const photoIds = new Set<string>()
-      data.roomData?.forEach((room: any) => {
-        room.surfaces?.forEach((surface: any) => {
-          surface.photos?.forEach((photo: any) => {
-            photoIds.add(photo.id)
-          })
-        })
-      })
-
-      // Fetch signed URLs for all photos
-      if (photoIds.size > 0) {
-        await loadPhotoUrls(Array.from(photoIds))
-      }
-    } catch (error) {
-      console.error("Error loading synopsis:", error)
-      toast.error("Failed to load synopsis")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadPhotoUrls = async (photoIds: string[]) => {
-    try {
-      const urlMap = new Map<string, string>()
-      
-      // Fetch signed URLs for each photo
-      await Promise.all(
-        photoIds.map(async (photoId) => {
-          try {
-            const response = await fetch(`/api/photos/${photoId}/url`)
-            if (response.ok) {
-              const { url } = await response.json()
-              urlMap.set(photoId, url)
-            }
-          } catch (err) {
-            console.error(`Error loading URL for photo ${photoId}:`, err)
-          }
-        })
-      )
-      
-      setPhotoUrls(urlMap)
-    } catch (error) {
-      console.error("Error loading photo URLs:", error)
-    }
-  }
+  const [exporting, setExporting] = useState(false)
+  const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; fileName: string } | null>(null)
 
   const handleExport = async () => {
+    if (!synopsis) return
+    
     try {
       setExporting(true)
       const response = await fetch(`/api/projects/${projectId}/synopsis/export`)
@@ -136,7 +47,7 @@ export function SynopsisViewer({ projectId }: SynopsisViewerProps) {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `${synopsis?.project.clientName}_Color_Synopsis.docx`.replace(/[^a-zA-Z0-9_\-\.]/g, '_')
+      a.download = `${synopsis.project.clientName}_Color_Synopsis.docx`.replace(/[^a-zA-Z0-9_\-\.]/g, '_')
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -151,240 +62,7 @@ export function SynopsisViewer({ projectId }: SynopsisViewerProps) {
     }
   }
 
-  const convertImageToBase64 = async (photoId: string): Promise<string> => {
-    try {
-      // Use server-side API to convert image to base64 (avoids CORS issues)
-      const response = await fetch(`/api/photos/${photoId}/base64`)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const { base64 } = await response.json()
-      console.log('Base64 conversion successful, length:', base64?.length || 0)
-      return base64 || ''
-    } catch (error) {
-      console.error('Error converting image to base64:', error)
-      // Return empty string on error
-      return ''
-    }
-  }
-
-  const handleExportPdf = async () => {
-    try {
-      setExportingPdf(true)
-      toast('Preparing PDF export...', { icon: '📄' })
-
-      if (!synopsisRef.current) {
-        throw new Error("Synopsis content not found")
-      }
-
-      // Clone the element to avoid modifying the original
-      const element = synopsisRef.current.cloneNode(true) as HTMLElement
-      
-      // Show hidden elements marked for PDF
-      const pdfVisibleElements = element.querySelectorAll('[data-pdf-visible="true"]')
-      pdfVisibleElements.forEach(el => {
-        (el as HTMLElement).classList.remove('hidden')
-      })
-      
-      // Remove all buttons (both with and without images)
-      const buttons = element.querySelectorAll('button')
-      buttons.forEach(btn => {
-        // If button contains an image, extract the image first
-        const imgs = btn.querySelectorAll('img')
-        if (imgs.length > 0) {
-          const parent = btn.parentElement
-          if (parent) {
-            // Replace button with its images in a container div
-            const container = document.createElement('div')
-            container.className = 'relative w-[102px] h-[102px] rounded overflow-hidden border-2 border-gray-200 flex-shrink-0'
-            imgs.forEach(img => container.appendChild(img.cloneNode(true)))
-            parent.replaceChild(container, btn)
-          }
-        } else {
-          btn.remove()
-        }
-      })
-
-      // Create a map of photo URLs to photo IDs from synopsis data
-      const urlToPhotoId = new Map<string, string>()
-      if (synopsis) {
-        synopsis.roomData.forEach((room) => {
-          room.surfaces.forEach((surface) => {
-            surface.photos?.forEach((photo) => {
-              const url = photoUrls.get(photo.id)
-              if (url) {
-                urlToPhotoId.set(url, photo.id)
-              }
-            })
-          })
-        })
-      }
-
-      // Find and convert all images to base64
-      const images = element.querySelectorAll('img')
-      console.log(`Found ${images.length} images to convert for PDF`)
-      
-      if (images.length > 0) {
-        toast(`Converting ${images.length} images...`, { icon: '🖼️' })
-        
-        const conversionPromises = Array.from(images).map(async (img, index) => {
-          // Get the actual displayed src
-          let srcToConvert = img.src || img.getAttribute('src') || ''
-          
-          console.log(`Processing image ${index + 1}/${images.length}:`, srcToConvert)
-          
-          if (srcToConvert && !srcToConvert.startsWith('data:')) {
-            try {
-              // Find the photo ID for this URL
-              const photoId = urlToPhotoId.get(srcToConvert)
-              
-              if (photoId) {
-                // Use the server-side API to get base64
-                const base64 = await convertImageToBase64(photoId)
-                
-                if (base64) {
-                  img.setAttribute('src', base64)
-                  img.removeAttribute('srcset')
-                  img.removeAttribute('sizes')
-                  
-                  // Set explicit dimensions
-                  const width = img.getAttribute('width') || '102'
-                  const height = img.getAttribute('height') || '102'
-                  img.style.width = `${width}px`
-                  img.style.height = `${height}px`
-                  img.style.objectFit = 'cover'
-                  img.style.display = 'block'
-                  
-                  console.log(`✓ Converted image ${index + 1}`)
-                  return true
-                } else {
-                  console.warn(`⚠ Empty base64 for image ${index + 1}`)
-                  return false
-                }
-              } else {
-                console.warn(`⚠ No photo ID found for image ${index + 1}`)
-                return false
-              }
-            } catch (err) {
-              console.error(`✗ Failed to convert image ${index + 1}:`, err)
-              return false
-            }
-          } else if (srcToConvert.startsWith('data:')) {
-            console.log(`✓ Image ${index + 1} already base64`)
-            return true
-          }
-          
-          return false
-        })
-        
-        const results = await Promise.all(conversionPromises)
-        const successCount = results.filter(Boolean).length
-        console.log(`Successfully converted ${successCount}/${images.length} images`)
-        
-        if (successCount === 0 && images.length > 0) {
-          throw new Error('Failed to convert any images. Please try again.')
-        }
-      }
-
-      console.log('Generating PDF document...')
-      toast('Rendering content to canvas...', { icon: '⏳' })
-
-      // Prepare element for rendering with proper page dimensions
-      // US Letter: 8.5" x 11" at 96 DPI = 816 x 1056 pixels
-      const pageWidthPx = 816
-      const pageHeightPx = 1056
-      const marginPx = 48  // 0.5 inch margins
-      const contentWidthPx = pageWidthPx - (marginPx * 2) // 720px
-      
-      element.style.width = `${contentWidthPx}px`
-      element.style.padding = `${marginPx}px`
-      element.style.backgroundColor = '#ffffff'
-      element.style.position = 'absolute'
-      element.style.left = '-9999px'
-      element.style.boxSizing = 'border-box'
-      document.body.appendChild(element)
-
-      try {
-        // Render the element to canvas
-        const canvas = await html2canvas(element, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: false,
-          logging: false,
-          backgroundColor: '#ffffff',
-          imageTimeout: 0,
-          removeContainer: false,
-          width: pageWidthPx,
-          windowWidth: pageWidthPx
-        })
-
-        toast('Creating PDF...', { icon: '📄' })
-
-        // Create PDF with same dimensions
-        const pdf = new jsPDF({
-          orientation: 'portrait',
-          unit: 'px',
-          format: [pageWidthPx, pageHeightPx],
-          compress: true
-        })
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.95)
-        const imgWidth = pageWidthPx
-        const imgHeight = (canvas.height * pageWidthPx) / canvas.width
-        
-        // Calculate how many pages we need
-        const totalPages = Math.ceil(imgHeight / pageHeightPx)
-        console.log(`PDF generation: ${totalPages} pages needed, canvas height: ${canvas.height}px, scaled height: ${imgHeight}px`)
-        toast(`Generating ${totalPages} page(s)...`, { icon: '📄' })
-        
-        // Add pages using jsPDF's automatic pagination
-        let heightLeft = imgHeight
-        let position = 0
-        let pageNum = 0
-        
-        while (heightLeft > 0) {
-          if (pageNum > 0) {
-            pdf.addPage()
-            position = -(pageNum * pageHeightPx)
-          }
-          
-          pdf.addImage(
-            imgData,
-            'JPEG',
-            0,
-            position,
-            imgWidth,
-            imgHeight,
-            undefined,
-            'FAST'
-          )
-          
-          heightLeft -= pageHeightPx
-          pageNum++
-          console.log(`Added page ${pageNum}/${totalPages}`)
-        }
-
-        // Download the PDF
-        const filename = `${synopsis?.project.clientName}_Color_Synopsis.pdf`.replace(/[^a-zA-Z0-9_\-\.]/g, '_')
-        pdf.save(filename)
-
-        toast.success("PDF exported successfully!")
-      } finally {
-        // Clean up: remove temporary element
-        document.body.removeChild(element)
-      }
-    } catch (error: any) {
-      console.error("Error exporting PDF:", error)
-      const errorMessage = error?.message || 'Unknown error occurred'
-      toast.error(`Failed to export PDF: ${errorMessage}`)
-    } finally {
-      setExportingPdf(false)
-    }
-  }
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -407,7 +85,7 @@ export function SynopsisViewer({ projectId }: SynopsisViewerProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={loadSynopsis} variant="outline">
+          <Button onClick={() => refetch()} variant="outline">
             <FileText className="mr-2 h-4 w-4" />
             Refresh Synopsis
           </Button>
@@ -433,8 +111,8 @@ export function SynopsisViewer({ projectId }: SynopsisViewerProps) {
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              <Button onClick={loadSynopsis} variant="outline" disabled={loading}>
-                {loading ? (
+              <Button onClick={() => refetch()} variant="outline" disabled={isLoading || isRefetching}>
+                {isRefetching ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Refreshing...
@@ -446,7 +124,7 @@ export function SynopsisViewer({ projectId }: SynopsisViewerProps) {
                   </>
                 )}
               </Button>
-              <Button onClick={handleExportPdf} disabled={exportingPdf} variant="outline">
+              <Button onClick={exportPdf} disabled={exportingPdf} variant="outline">
                 {exportingPdf ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
