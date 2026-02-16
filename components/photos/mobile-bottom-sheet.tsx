@@ -28,6 +28,7 @@ interface MobileBottomSheetProps {
   onRedo?: () => void
   onClear?: () => void
   onQuickAction?: () => void
+  onShowDetails?: () => void
   canUndo?: boolean
   canRedo?: boolean
   canClear?: boolean
@@ -49,6 +50,7 @@ export function MobileBottomSheet({
   onRedo,
   onClear,
   onQuickAction,
+  onShowDetails,
   canUndo = false,
   canRedo = false,
   canClear = false,
@@ -56,7 +58,7 @@ export function MobileBottomSheet({
   onToggle
 }: MobileBottomSheetProps) {
   const [expanded, setExpanded] = useState(isOpen)
-  const [activeTab, setActiveTab] = useState<'tools' | 'colors' | 'settings'>('tools')
+  const [activeTab, setActiveTab] = useState<'tools' | 'colors' | 'settings' | 'details'>('tools')
 
   useEffect(() => {
     setExpanded(isOpen)
@@ -116,10 +118,11 @@ export function MobileBottomSheet({
       </div>
 
       {/* Bottom Sheet */}
-      <div 
+      <div
         className={`bg-white border-t shadow-2xl transition-all duration-300 ease-out ${
           expanded ? 'max-h-[70vh]' : 'max-h-16'
         }`}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {/* Handle / Toggle Bar */}
         <div 
@@ -151,6 +154,23 @@ export function MobileBottomSheet({
 
             {/* Quick Actions */}
             <div className="flex items-center gap-1">
+              {onShowDetails && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    onShowDetails()
+                    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                      navigator.vibrate(10)
+                    }
+                  }}
+                  className="h-10 w-10 p-0"
+                  style={{ minWidth: '44px', minHeight: '44px' }}
+                  title="Show annotation details"
+                >
+                  <Tag className="h-5 w-5" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -180,7 +200,7 @@ export function MobileBottomSheet({
           <div className="px-4 py-3 space-y-4 overflow-y-auto max-h-[60vh]">
             {/* Tab Navigation */}
             <div className="flex border-b">
-              {(['tools', 'colors', 'settings'] as const).map((tab) => (
+              {(['tools', 'colors', 'settings', ...(onShowDetails ? ['details'] as const : [])] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => {
@@ -303,6 +323,25 @@ export function MobileBottomSheet({
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Details Tab */}
+            {activeTab === 'details' && onShowDetails && (
+              <div className="space-y-3 py-2">
+                <p className="text-sm text-gray-600 text-center">
+                  Open the annotation details panel to set colors, surfaces, rooms, and other tag properties.
+                </p>
+                <Button
+                  onClick={() => {
+                    onShowDetails()
+                    setExpanded(false)
+                  }}
+                  className="w-full h-12 text-sm"
+                >
+                  <Tag className="h-4 w-4 mr-2" />
+                  Open Annotation Details
+                </Button>
               </div>
             )}
 

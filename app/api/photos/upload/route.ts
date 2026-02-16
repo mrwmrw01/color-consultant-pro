@@ -198,8 +198,8 @@ export async function POST(request: NextRequest) {
             blur_placeholder: blurPlaceholder,
             mimeType: 'image/webp',
             size: validation.metadata!.size,
-            width: validation.metadata!.width,
-            height: validation.metadata!.height,
+            width: optimizationResult.metadata.large.width,
+            height: optimizationResult.metadata.large.height,
             optimized_size: optimizationResult.metadata.large.size +
                             optimizationResult.metadata.medium.size +
                             optimizationResult.metadata.thumbnail.size,

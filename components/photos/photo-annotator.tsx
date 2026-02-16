@@ -118,6 +118,9 @@ export function PhotoAnnotator({
   // Highlighted annotation tracking
   const [highlightedAnnotationId, setHighlightedAnnotationId] = useState<string | null>(null)
 
+  // Mobile summary toggle
+  const [showMobileSummary, setShowMobileSummary] = useState(false)
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     // Start with sidebar closed on mobile, open on desktop
     if (typeof window !== 'undefined') {
@@ -290,12 +293,26 @@ export function PhotoAnnotator({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const compositeCanvasRef = useRef<HTMLCanvasElement>(null)
   
-  // Detect mobile screen size
+  // Detect mobile screen size and fix zoom controls position
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024) // lg breakpoint
+      const mobile = window.innerWidth < 1024 // lg breakpoint
+      setIsMobile(mobile)
+
+      // Reset zoom controls if they overlap the bottom sheet area on mobile
+      if (mobile) {
+        const saved = localStorage.getItem('zoom-controls-position-v2')
+        if (saved) {
+          try {
+            const pos = JSON.parse(saved)
+            if (pos.y > window.innerHeight - 140) {
+              localStorage.setItem('zoom-controls-position-v2', JSON.stringify({ x: 20, y: 60 }))
+            }
+          } catch {}
+        }
+      }
     }
-    
+
     checkMobile()
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
@@ -930,16 +947,16 @@ export function PhotoAnnotator({
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b px-6 py-4">
+      <div className="bg-white border-b px-3 py-2 lg:px-6 lg:py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 lg:gap-4">
             <Button variant="ghost" size="sm" asChild>
               <Link href={`/dashboard/projects/${photo.projectId}`}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Project
+                <ArrowLeft className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Back to Project</span>
               </Link>
             </Button>
-            <div>
+            <div className="hidden sm:block">
               <h1 className="text-xl font-semibold text-gray-900">
                 Annotate Photo
               </h1>
@@ -962,7 +979,7 @@ export function PhotoAnnotator({
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               
-              <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2">
                 <Badge variant="secondary" className="font-mono">
                   {currentPhotoIndex + 1} / {allProjectPhotos.length}
                 </Badge>
@@ -985,7 +1002,7 @@ export function PhotoAnnotator({
           
           {/* Single Photo View */}
           {allProjectPhotos.length <= 1 && (
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <Badge variant="outline">
                 {annotations.length} annotations
               </Badge>
@@ -1003,8 +1020,21 @@ export function PhotoAnnotator({
       <div className="max-w-7xl mx-auto p-4 md:p-6">
         <div className="space-y-4">
 
+          {/* Mobile Summary Toggle */}
+          {isMobile && annotations.length > 0 && (
+            <button
+              onClick={() => setShowMobileSummary(!showMobileSummary)}
+              className="w-full flex items-center justify-between px-3 py-2 bg-white border rounded-lg text-sm font-medium text-gray-700"
+            >
+              <span>{annotations.length} tag{annotations.length !== 1 ? 's' : ''}</span>
+              <svg className={`h-4 w-4 transition-transform ${showMobileSummary ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          )}
+
           {/* Existing Annotations Summary - Moved to top */}
-          {annotations.length > 0 && (
+          {annotations.length > 0 && (!isMobile || showMobileSummary) && (
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -1017,7 +1047,7 @@ export function PhotoAnnotator({
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+                <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 overflow-y-auto ${isMobile ? 'max-h-32' : 'max-h-64'}`}>
                   {annotations.map((annotation, index) => (
                     <div 
                       key={annotation.id || index} 
@@ -1154,7 +1184,7 @@ export function PhotoAnnotator({
             <div className="grid gap-4 transition-all duration-300 grid-cols-1">
               {/* Drawing Canvas */}
               <Card className="relative">
-                <CardContent className="p-0 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+                <CardContent className="p-0 overflow-auto" style={{ maxHeight: isMobile ? 'calc(100dvh - 110px)' : 'calc(100vh - 200px)' }}>
                   <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left', transition: 'transform 0.2s' }}>
                     {imageUrl ? (
                       <DrawingCanvas
@@ -1186,11 +1216,15 @@ export function PhotoAnnotator({
                 </CardContent>
               </Card>
 
-              {/* Annotation Details Panel - Floating Draggable/Resizable (desktop) */}
+              {/* Annotation Details Panel - Slide-up overlay (mobile) / Floating Draggable (desktop) */}
               {isSidebarOpen && (
                 <div
                   ref={panelRef}
-                  className="w-full max-w-[100vw] overflow-hidden lg:fixed lg:z-30"
+                  className={
+                    isMobile
+                      ? "fixed inset-x-0 bottom-0 z-[45] max-h-[70vh] rounded-t-xl shadow-2xl overflow-hidden"
+                      : "w-full max-w-[100vw] overflow-hidden lg:fixed lg:z-30"
+                  }
                   style={!isMobile ? {
                     left: `${panelPos.x}px`,
                     top: `${panelPos.y}px`,
@@ -1199,10 +1233,16 @@ export function PhotoAnnotator({
                   } : {}}
                 >
                 <Card className="h-full flex flex-col shadow-lg border-2 bg-white">
+                  {/* Mobile swipe handle */}
+                  {isMobile && (
+                    <div className="flex justify-center pt-2 pb-1">
+                      <div className="w-10 h-1 bg-gray-300 rounded-full" />
+                    </div>
+                  )}
                   <CardHeader
-                    className="pb-2 py-2 flex-shrink-0 cursor-grab active:cursor-grabbing select-none"
-                    onMouseDown={handlePanelDragStart}
-                    onTouchStart={handlePanelDragStartTouch}
+                    className={`pb-2 py-2 flex-shrink-0 select-none ${!isMobile ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    onMouseDown={!isMobile ? handlePanelDragStart : undefined}
+                    onTouchStart={!isMobile ? handlePanelDragStartTouch : undefined}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -1494,18 +1534,17 @@ export function PhotoAnnotator({
               )}
             </div>
 
-            {/* Toggle Button - Fixed floating on desktop when panel is closed */}
+            {/* Toggle Button - Fixed floating on desktop when panel is closed (hidden on mobile — use bottom sheet) */}
             {!isSidebarOpen && (
               <Button
                 onClick={() => setIsSidebarOpen(true)}
                 variant="outline"
                 size="sm"
-                className="lg:fixed lg:right-6 lg:top-[80px] lg:z-40 absolute top-2 right-2 z-20 shadow-md bg-white"
+                className="hidden lg:fixed lg:right-6 lg:top-[80px] lg:z-40 lg:block shadow-md bg-white"
                 title="Show details panel"
               >
-                <PanelRightOpen className="h-4 w-4 mr-1 md:mr-2" />
-                <span className="hidden sm:inline">Show Panel</span>
-                <span className="sm:hidden">Show</span>
+                <PanelRightOpen className="h-4 w-4 mr-2" />
+                Show Panel
               </Button>
             )}
           </div>
@@ -2104,6 +2143,7 @@ export function PhotoAnnotator({
         onUndo={handleUndo}
         onRedo={handleRedo}
         onClear={handleClearAll}
+        onShowDetails={() => setIsSidebarOpen(true)}
         canUndo={undoStack.length > 0}
         canRedo={redoStack.length > 0}
         canClear={annotations.length > 0}

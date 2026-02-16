@@ -67,6 +67,9 @@
   body {
     @apply bg-background text-foreground;
   }
+  img {
+    image-orientation: from-image;
+  }
 }
 
 /* Paint Consultant specific styles */
