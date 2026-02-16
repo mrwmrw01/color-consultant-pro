@@ -25,13 +25,10 @@ export function DashboardOverview({ clients, user }: DashboardOverviewProps) {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold" style={{ color: '#412501' }}>
-            Welcome back, {user?.firstName || user?.name}! 
+            Welcome back, {user?.firstName || user?.name}!
           </h1>
           <p className="mt-1" style={{ color: '#8b4513' }}>
-            Here's what's happening with your consultations today
-          </p>
-          <p className="mt-1 text-xs font-bold" style={{ color: 'red' }}>
-            [v2 - cards removed]
+            Here&apos;s what&apos;s happening with your consultations today
           </p>
         </div>
         <Button asChild className="w-full lg:w-auto" style={{ backgroundColor: '#c47004' }}>
