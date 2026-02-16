@@ -1,13 +1,19 @@
 /**
- * Seed colors from XLSX export CSVs + create ColorAvailability cross-references
+ * Seed colors from Color Uploads.xlsx + create ColorAvailability cross-references
+ *
+ * Reads color data directly from the xlsx spreadsheet (the single source of truth)
+ * and product lines from the products.csv reference file.
+ *
  * Run with: npx tsx scripts/seed-colors-from-xlsx.ts
  */
 import { PrismaClient } from '@prisma/client'
 import * as fs from 'fs'
 import * as path from 'path'
+import * as XLSX from 'xlsx'
 
 const prisma = new PrismaClient()
 
+const XLSX_PATH = path.join(__dirname, '..', 'data', 'Color Uploads.xlsx')
 const DATA_DIR = path.join(__dirname, '..', 'data', 'color-import')
 
 // ── Parse Products sheet to get product lines with their sheens ──────────
@@ -85,7 +91,7 @@ function parseProducts(): ProductLine[] {
   return products
 }
 
-// ── Parse color CSVs ─────────────────────────────────────────────────────
+// ── Parse colors directly from xlsx ──────────────────────────────────────
 
 interface ColorRow {
   manufacturer: string
@@ -97,20 +103,37 @@ interface ColorRow {
   hex: string
 }
 
-function parseSWColors(): ColorRow[] {
-  const raw = fs.readFileSync(path.join(DATA_DIR, 'sw-colors.csv'), 'utf-8')
-  const lines = raw.split('\n').filter(l => l.trim())
+function parseColorsFromXlsx(): { swColors: ColorRow[]; bmColors: ColorRow[] } {
+  if (!fs.existsSync(XLSX_PATH)) {
+    throw new Error(`Spreadsheet not found: ${XLSX_PATH}`)
+  }
+
+  const workbook = XLSX.readFile(XLSX_PATH)
+
+  const swColors = parseSWSheet(workbook)
+  const bmColors = parseBMSheet(workbook)
+
+  return { swColors, bmColors }
+}
+
+function parseSWSheet(workbook: XLSX.WorkBook): ColorRow[] {
+  const sheet = workbook.Sheets['SW']
+  if (!sheet) throw new Error('Sheet "SW" not found in spreadsheet')
+
+  // SW columns: Manufacturer, Color Number, Color Name, Locator, Red Value, Green Value, Blue Value, Hex
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as unknown as unknown[][]
   const colors: ColorRow[] = []
 
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',')
-    if (cols.length < 7) continue
-    const colorCode = cols[1]?.trim()
-    const name = cols[2]?.trim()
-    const r = parseInt(cols[4]?.trim() || '0')
-    const g = parseInt(cols[5]?.trim() || '0')
-    const b = parseInt(cols[6]?.trim() || '0')
-    const hex = cols[7]?.trim() || ''
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i]
+    if (!row || row.length < 7) continue
+
+    const colorCode = String(row[1] ?? '').trim()
+    const name = String(row[2] ?? '').trim()
+    const r = Number(row[4]) || 0
+    const g = Number(row[5]) || 0
+    const b = Number(row[6]) || 0
+    const hex = String(row[7] ?? '').trim()
 
     if (!colorCode || !name) continue
 
@@ -131,21 +154,24 @@ function parseSWColors(): ColorRow[] {
   return colors
 }
 
-function parseBMColors(): ColorRow[] {
-  const raw = fs.readFileSync(path.join(DATA_DIR, 'bm-colors.csv'), 'utf-8')
-  const lines = raw.split('\n').filter(l => l.trim())
+function parseBMSheet(workbook: XLSX.WorkBook): ColorRow[] {
+  const sheet = workbook.Sheets['BM']
+  if (!sheet) throw new Error('Sheet "BM" not found in spreadsheet')
+
+  // BM columns: Manufacturer, Color Name, Color Number, Red Value, Green Value, Blue Value, Hex
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as unknown as unknown[][]
   const colors: ColorRow[] = []
 
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',')
-    if (cols.length < 6) continue
-    // BM format: Manufacturer, Color Name, Color Number, R, G, B, Hex
-    const name = cols[1]?.trim()
-    const colorCode = cols[2]?.trim()
-    const r = parseInt(cols[3]?.trim() || '0')
-    const g = parseInt(cols[4]?.trim() || '0')
-    const b = parseInt(cols[5]?.trim() || '0')
-    const hex = cols[6]?.trim() || ''
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i]
+    if (!row || row.length < 6) continue
+
+    const name = String(row[1] ?? '').trim()
+    const colorCode = String(row[2] ?? '').trim()
+    const r = Number(row[3]) || 0
+    const g = Number(row[4]) || 0
+    const b = Number(row[5]) || 0
+    const hex = String(row[6] ?? '').trim()
 
     if (!colorCode || !name) continue
 
@@ -166,9 +192,9 @@ function parseBMColors(): ColorRow[] {
 async function main() {
   console.log('=== Color Catalog Import ===\n')
 
-  // Parse data
-  const swColors = parseSWColors()
-  const bmColors = parseBMColors()
+  // Parse data directly from xlsx
+  console.log(`Reading colors from: ${XLSX_PATH}`)
+  const { swColors, bmColors } = parseColorsFromXlsx()
   const products = parseProducts()
 
   console.log(`Parsed ${swColors.length} Sherwin Williams colors`)
