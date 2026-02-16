@@ -16,8 +16,20 @@ import { createS3Client, getBucketConfig } from "@/lib/aws-config"
 
 export const dynamic = "force-dynamic"
 
-const s3Client = createS3Client()
-const { bucketName, folderPrefix } = getBucketConfig()
+// Lazy-initialized to avoid build-time errors when env vars aren't set
+let _s3Client: S3Client | null = null
+let _bucketName: string | null = null
+let _folderPrefix: string | null = null
+
+function getS3() {
+  if (!_s3Client) _s3Client = createS3Client()
+  if (!_bucketName) {
+    const config = getBucketConfig()
+    _bucketName = config.bucketName
+    _folderPrefix = config.folderPrefix
+  }
+  return { s3Client: _s3Client, bucketName: _bucketName, folderPrefix: _folderPrefix || '' }
+}
 
 // Track uploaded S3 keys for potential cleanup
 interface UploadedS3File {
@@ -29,6 +41,7 @@ interface UploadedS3File {
  * Upload a single file to S3
  */
 async function uploadToS3(buffer: Buffer, key: string, contentType: string): Promise<string> {
+  const { s3Client, bucketName } = getS3()
   const command = new PutObjectCommand({
     Bucket: bucketName,
     Key: key,
@@ -154,6 +167,7 @@ export async function POST(request: NextRequest) {
       logOptimization(optimizationResult, file.name)
 
       // Upload all 3 sizes to S3
+      const { folderPrefix } = getS3()
       const timestamp = Date.now()
       const baseFileName = file.name.replace(/\.[^/.]+$/, '') // Remove extension
       
