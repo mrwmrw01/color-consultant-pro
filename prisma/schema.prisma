@@ -58,6 +58,8 @@ model User {
   projects       Project[]
   clients        Client[]
   favoriteColors UserFavoriteColor[]
+  createdColors  Color[]             @relation("ColorCreator")
+  approvedColors Color[]             @relation("ColorApprover")
 
   @@map("users")
 }
@@ -237,11 +239,28 @@ model Annotation {
   @@map("annotations")
 }
 
+model Manufacturer {
+  id            String   @id @default(cuid())
+  name          String   @unique // "Sherwin Williams", "Benjamin Moore", "Farrow & Ball"
+  abbreviation  String   @unique // "SW", "BM", "FB"
+  website       String?
+  codePattern   String? // optional regex to validate new color codes for this brand
+  notes         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  colors Color[]
+
+  @@index([isActive])
+  @@map("manufacturers")
+}
+
 model Color {
   id           String    @id @default(cuid())
   colorCode    String // e.g., "SW 7005", "BM OC-17", "AF-100" — NOT globally unique (SW and BM can share codes)
   name         String // e.g., "Extra White", "Cloud White"
-  manufacturer String // e.g., "Sherwin Williams", "Benjamin Moore", "Custom Paint Co"
+  manufacturer String // LEGACY string (kept for backwards compat during transition)
   rgbColor     String? // RGB values (e.g., "238, 237, 231")
   hexColor     String? // for display purposes
   notes        String?
@@ -250,14 +269,36 @@ model Color {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  // New: relation to Manufacturer entity (nullable during migration)
+  manufacturerId   String?
+  manufacturerRel  Manufacturer? @relation(fields: [manufacturerId], references: [id])
+
+  // Color lifecycle
+  status           String   @default("active") // active, discontinued, superseded, pending
+  supersededById   String?
+  supersededBy     Color?   @relation("Supersession", fields: [supersededById], references: [id])
+  supersedes       Color[]  @relation("Supersession")
+  introducedYear   Int?
+  discontinuedAt   DateTime?
+
+  // User-suggested colors (added inline during annotation, awaiting admin approval)
+  createdByUserId  String?
+  createdByUser    User?    @relation("ColorCreator", fields: [createdByUserId], references: [id])
+  approvedByUserId String?
+  approvedByUser   User?    @relation("ColorApprover", fields: [approvedByUserId], references: [id])
+  isUserSuggested  Boolean  @default(false)
+
   annotations     Annotation[]
   synopsisEntries SynopsisEntry[]
-  availability    ColorAvailability[] // products and sheens this color is available in
+  availability    ColorAvailability[]
   favoritedBy     UserFavoriteColor[]
 
   @@unique([manufacturer, colorCode]) // Composite unique — allows same code across manufacturers
   @@index([manufacturer])
   @@index([colorCode])
+  @@index([manufacturerId])
+  @@index([status])
+  @@index([isUserSuggested])
   @@map("colors")
 }
 
