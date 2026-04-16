@@ -50,9 +50,14 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Check if color already exists
+        // Check if color already exists (composite unique: manufacturer + colorCode)
         const existing = await prisma.color.findUnique({
-          where: { colorCode: color.colorCode }
+          where: {
+            manufacturer_colorCode: {
+              manufacturer: color.manufacturer,
+              colorCode: color.colorCode,
+            },
+          },
         })
 
         if (existing) {

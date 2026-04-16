@@ -239,7 +239,7 @@ model Annotation {
 
 model Color {
   id           String    @id @default(cuid())
-  colorCode    String    @unique // e.g., "SW 7005", "BM OC-17"
+  colorCode    String // e.g., "SW 7005", "BM OC-17", "AF-100" — NOT globally unique (SW and BM can share codes)
   name         String // e.g., "Extra White", "Cloud White"
   manufacturer String // e.g., "Sherwin Williams", "Benjamin Moore", "Custom Paint Co"
   rgbColor     String? // RGB values (e.g., "238, 237, 231")
@@ -255,6 +255,9 @@ model Color {
   availability    ColorAvailability[] // products and sheens this color is available in
   favoritedBy     UserFavoriteColor[]
 
+  @@unique([manufacturer, colorCode]) // Composite unique — allows same code across manufacturers
+  @@index([manufacturer])
+  @@index([colorCode])
   @@map("colors")
 }
 

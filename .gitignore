@@ -51,3 +51,14 @@ status.json
 progress.json
 logs/
 docs/generated/
+
+# Dev artifacts (mockups, diagnostic scripts, raw S3 downloads)
+Henderson-Synopsis-*.pdf
+*-MOCKUP.pdf
+scripts/check-dup-detail.ts
+scripts/check-dups.ts
+scripts/check-shared-codes.ts
+scripts/scan-truncated.ts
+public/demo/
+UI_IMPROVEMENT_PRD/
+UI_IMPROVEMENT_PRD
