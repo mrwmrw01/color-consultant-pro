@@ -98,9 +98,12 @@ export async function POST(request: NextRequest) {
       address: address || null,
       userId: session.user.id,
       rooms: rooms && rooms.length > 0 ? {
-        create: rooms.map(room => ({
-          name: room.name,
-          description: room.description || null
+        connectOrCreate: rooms.map((room: { name: string; description: string | null }) => ({
+          where: { name: room.name.trim() },
+          create: {
+            name: room.name.trim(),
+            description: room.description || null
+          }
         }))
       } : undefined
     }
@@ -143,8 +146,22 @@ export async function POST(request: NextRequest) {
 
     // Handle Prisma unique constraint violation (P2002)
     if (error?.code === "P2002") {
+      const target = error?.meta?.target
+      if (target && Array.isArray(target) && target.includes("name") && target.includes("userId")) {
+        return NextResponse.json(
+          { error: "A project with this name already exists. Please choose a different name." },
+          { status: 409 }
+        )
+      }
+      // Room name collision (rooms are globally unique) — use connectOrCreate instead
+      if (target && (String(target).includes("rooms") || String(target).includes("name"))) {
+        return NextResponse.json(
+          { error: "A room with one of those names already exists. The rooms were linked to existing entries instead. Please try again." },
+          { status: 409 }
+        )
+      }
       return NextResponse.json(
-        { error: "A project with this name already exists. Please choose a different name." },
+        { error: "A record with this data already exists." },
         { status: 409 }
       )
     }
