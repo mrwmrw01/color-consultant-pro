@@ -21,6 +21,8 @@ interface DrawingCanvasProps {
   onZoomChange?: (zoom: number) => void
   onSwipeLeft?: () => void
   onSwipeRight?: () => void
+  /** "navigate" = pinch/pan only, no draws. "annotate" = single-finger draws/taps. */
+  interactionMode?: 'navigate' | 'annotate'
 }
 
 interface Point {
@@ -28,10 +30,10 @@ interface Point {
   y: number
 }
 
-export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(function DrawingCanvas({ 
-  imageUrl, 
-  tool, 
-  annotations, 
+export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(function DrawingCanvas({
+  imageUrl,
+  tool,
+  annotations,
   onAnnotationCreate,
   onTextAnnotationRequest,
   onAnnotationUpdate,
@@ -40,7 +42,8 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(f
   zoomLevel = 100,
   onZoomChange,
   onSwipeLeft,
-  onSwipeRight
+  onSwipeRight,
+  interactionMode = 'annotate'
 }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   
@@ -311,7 +314,7 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(f
   }, [getCanvasCoordinates, handleStart])
 
   const startTouch = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
-    // Handle pinch-to-zoom with two fingers
+    // Handle pinch-to-zoom with two fingers (always available in both modes)
     if (event.touches.length === 2 && onZoomChange) {
       event.preventDefault()
       const distance = getTouchDistance(event.touches)
@@ -324,8 +327,8 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(f
       })
       return
     }
-    
-    // Single finger - track for swipe detection
+
+    // Single finger
     if (event.touches.length === 1) {
       const touch = event.touches[0]
       setTouchStart({
@@ -333,12 +336,19 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(f
         y: touch.clientY,
         time: Date.now()
       })
-      
+
+      // In navigate mode: don't draw, don't prevent scroll (allow pan)
+      if (interactionMode === 'navigate') {
+        // Still allow annotation selection on tap (handled in stopTouch)
+        return
+      }
+
+      // In annotate mode: draw/annotate with single finger
       event.preventDefault() // Prevent scrolling while drawing
       const coords = getTouchCanvasCoordinates(event, 0)
       handleStart(coords)
     }
-  }, [getTouchCanvasCoordinates, handleStart, getTouchDistance, getTouchCenter, zoomLevel, onZoomChange])
+  }, [getTouchCanvasCoordinates, handleStart, getTouchDistance, getTouchCenter, zoomLevel, onZoomChange, interactionMode])
 
   // Shared logic for drawing/dragging
   const handleMove = useCallback((coords: Point) => {
@@ -382,7 +392,7 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(f
   }, [getCanvasCoordinates, handleMove])
 
   const handleTouch = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
-    // Handle pinch zoom movement
+    // Handle pinch zoom movement (always available in both modes)
     if (pinchState.isPinching && event.touches.length === 2 && onZoomChange) {
       event.preventDefault()
       const currentDistance = getTouchDistance(event.touches)
@@ -393,14 +403,17 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(f
       }
       return
     }
-    
-    // Single finger - drawing mode
+
+    // In navigate mode: don't draw, allow browser scroll/pan
+    if (interactionMode === 'navigate') return
+
+    // Single finger - drawing mode (annotate mode only)
     if (event.touches.length === 1 && !pinchState.isPinching) {
       event.preventDefault() // Prevent scrolling while drawing
       const coords = getTouchCanvasCoordinates(event, 0)
       handleMove(coords)
     }
-  }, [getTouchCanvasCoordinates, handleMove, pinchState, getTouchDistance, onZoomChange])
+  }, [getTouchCanvasCoordinates, handleMove, pinchState, getTouchDistance, onZoomChange, interactionMode])
 
   // Shared logic for stopping drawing/dragging
   const handleStop = useCallback((coords?: Point) => {

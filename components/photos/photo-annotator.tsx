@@ -106,6 +106,9 @@ export function PhotoAnnotator({
   const [annotationSuggestions, setAnnotationSuggestions] = useState<any[]>([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [zoomLevel, setZoomLevel] = useState(100) // Zoom percentage: 50% to 200%
+  const [interactionMode, setInteractionMode] = useState<'navigate' | 'annotate'>('navigate') // navigate=pan/zoom, annotate=draw/tap
+  const [zoomOrigin, setZoomOrigin] = useState<string>('center center') // transform-origin for centering zoom on pinch point
+  const photoContainerRef = useRef<HTMLDivElement>(null)
   const [editForm, setEditForm] = useState({
     colorId: '',
     surfaceType: '',
@@ -499,7 +502,16 @@ export function PhotoAnnotator({
   }
 
   const handleResetZoom = () => {
-    setZoomLevel(100)
+    // On mobile, fit-to-width instead of going to 100% (which is too zoomed in)
+    if (isMobile && photoContainerRef.current) {
+      const containerWidth = photoContainerRef.current.clientWidth
+      // Assume typical photo is ~2048px wide; fit to container
+      const fitZoom = Math.round((containerWidth / 2048) * 100)
+      setZoomLevel(Math.max(25, Math.min(100, fitZoom)))
+    } else {
+      setZoomLevel(100)
+    }
+    setZoomOrigin('center center')
   }
   
   // Handle tool change with mobile annotation dialog
@@ -534,6 +546,15 @@ export function PhotoAnnotator({
     // Switch back to pen tool after placing the tag
     setCurrentTool({ ...currentTool, type: 'pen' })
   }
+
+  // Set fit-to-width zoom on mobile when photo first loads
+  useEffect(() => {
+    if (isMobile && photoContainerRef.current && imageUrl) {
+      const containerWidth = photoContainerRef.current.clientWidth
+      const fitZoom = Math.round((containerWidth / 2048) * 100)
+      setZoomLevel(Math.max(25, Math.min(100, fitZoom)))
+    }
+  }, [isMobile, imageUrl])
 
   useEffect(() => {
     const fetchImageUrl = async () => {
@@ -1169,7 +1190,24 @@ export function PhotoAnnotator({
             </div>
           </div>
 
-          {/* Zoom Controls - Fixed Floating (not bound to photo) */}
+          {/* Interaction Mode Toggle + Zoom Controls */}
+          <div className="fixed bottom-20 left-4 z-50 flex flex-col gap-2">
+            <button
+              onClick={() => setInteractionMode(interactionMode === 'navigate' ? 'annotate' : 'navigate')}
+              className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white text-xs font-bold transition-all ${
+                interactionMode === 'annotate'
+                  ? 'bg-blue-600 ring-2 ring-blue-300 ring-offset-2'
+                  : 'bg-slate-600'
+              }`}
+              title={interactionMode === 'navigate' ? 'Switch to Annotate mode' : 'Switch to Navigate mode'}
+            >
+              {interactionMode === 'annotate' ? '✏️' : '🔍'}
+            </button>
+            <span className="text-[10px] text-center font-medium text-slate-600">
+              {interactionMode === 'annotate' ? 'Draw' : 'Pan'}
+            </span>
+          </div>
+
           <DraggableZoomControls
             zoomLevel={zoomLevel}
             onZoomIn={handleZoomIn}
@@ -1184,8 +1222,13 @@ export function PhotoAnnotator({
             <div className="grid gap-4 transition-all duration-300 grid-cols-1">
               {/* Drawing Canvas */}
               <Card className="relative">
-                <CardContent className="p-0 overflow-auto" style={{ maxHeight: isMobile ? 'calc(100dvh - 110px)' : 'calc(100vh - 200px)' }}>
-                  <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left', transition: 'transform 0.2s' }}>
+                <CardContent ref={photoContainerRef} className="p-0 overflow-auto" style={{
+                  maxHeight: isMobile ? 'calc(100dvh - 110px)' : 'calc(100vh - 200px)',
+                  touchAction: interactionMode === 'navigate' ? 'pan-x pan-y pinch-zoom' : 'none',
+                  border: interactionMode === 'annotate' ? '2px solid #3b82f6' : '2px solid transparent',
+                  transition: 'border-color 0.2s',
+                }}>
+                  <div style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: zoomOrigin, transition: 'transform 0.2s' }}>
                     {imageUrl ? (
                       <DrawingCanvas
                       ref={canvasRef}
@@ -1198,7 +1241,7 @@ export function PhotoAnnotator({
                       highlightedAnnotationId={highlightedAnnotationId}
                       onAnnotationSelect={(annotationId) => {
                         // Toggle highlighting - click again to deselect
-                        setHighlightedAnnotationId(prev => 
+                        setHighlightedAnnotationId(prev =>
                           prev === annotationId ? null : annotationId
                         )
                       }}
@@ -1206,6 +1249,7 @@ export function PhotoAnnotator({
                       onZoomChange={setZoomLevel}
                       onSwipeLeft={hasNextPhoto ? handleNextPhoto : undefined}
                       onSwipeRight={hasPreviousPhoto ? handlePreviousPhoto : undefined}
+                      interactionMode={interactionMode}
                     />
                   ) : (
                     <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
