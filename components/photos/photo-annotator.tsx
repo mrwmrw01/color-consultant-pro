@@ -366,16 +366,17 @@ export function PhotoAnnotator({
     }
   }
 
-  // Function to refresh colors from server
+  // Function to refresh colors from server (paginated — loads first 200 for the picker)
   const refreshColors = async (selectLatest: boolean = false) => {
     try {
-      const response = await fetch('/api/colors')
+      const response = await fetch('/api/colors?limit=200')
       if (response.ok) {
-        const fetchedColors = await response.json()
+        const data = await response.json()
+        const fetchedColors = Array.isArray(data) ? data : (data.colors || [])
         setColors(fetchedColors)
-        
+
         if (selectLatest && fetchedColors.length > 0) {
-          const sortedByDate = [...fetchedColors].sort((a, b) => 
+          const sortedByDate = [...fetchedColors].sort((a: any, b: any) =>
             new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
           )
           const latestColor = sortedByDate[0]

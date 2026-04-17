@@ -14,20 +14,22 @@ export default async function ColorsPage() {
   }
 
   const colorCodes = await prisma.color.findMany({
-    include: {
-      availability: {
-        orderBy: [
-          { productLine: 'asc' },
-          { sheen: 'asc' }
-        ]
-      }
+    select: {
+      id: true,
+      colorCode: true,
+      name: true,
+      manufacturer: true,
+      hexColor: true,
+      rgbColor: true,
+      usageCount: true,
+      status: true,
     },
     orderBy: [
       { usageCount: 'desc' },
       { manufacturer: "asc" },
       { colorCode: "asc" },
-      { name: "asc" }
-    ]
+    ],
+    take: 200, // Initial page load — paginate via client-side search/filter
   })
 
   return <ColorManagement colorCodes={colorCodes} />

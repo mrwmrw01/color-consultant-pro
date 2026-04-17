@@ -14,35 +14,45 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const manufacturer = searchParams.get('manufacturer')
     const search = searchParams.get('search')
+    const limit = Math.min(Number(searchParams.get('limit') || 50), 200)
+    const offset = Math.max(Number(searchParams.get('offset') || 0), 0)
 
-    const colors = await prisma.color.findMany({
-      where: {
-        ...(manufacturer && manufacturer !== 'all' ? { manufacturer } : {}),
-        ...(search ? {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { manufacturer: { contains: search, mode: 'insensitive' } },
-            { colorCode: { contains: search, mode: 'insensitive' } }
-          ]
-        } : {})
-      },
-      include: {
-        availability: {
-          orderBy: [
-            { productLine: 'asc' },
-            { sheen: 'asc' }
-          ]
-        }
-      },
-      orderBy: [
-        { usageCount: 'desc' }, // Most used colors first
-        { manufacturer: 'asc' },
-        { colorCode: 'asc' },
-        { name: 'asc' }
-      ]
-    })
+    const where: any = {
+      ...(manufacturer && manufacturer !== 'all' ? { manufacturer } : {}),
+      ...(search ? {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' as const } },
+          { manufacturer: { contains: search, mode: 'insensitive' as const } },
+          { colorCode: { contains: search, mode: 'insensitive' as const } }
+        ]
+      } : {})
+    }
 
-    return NextResponse.json(colors)
+    const [colors, total] = await Promise.all([
+      prisma.color.findMany({
+        where,
+        select: {
+          id: true,
+          colorCode: true,
+          name: true,
+          manufacturer: true,
+          hexColor: true,
+          rgbColor: true,
+          usageCount: true,
+          status: true,
+        },
+        orderBy: [
+          { usageCount: 'desc' },
+          { manufacturer: 'asc' },
+          { colorCode: 'asc' },
+        ],
+        take: limit,
+        skip: offset,
+      }),
+      prisma.color.count({ where }),
+    ])
+
+    return NextResponse.json({ colors, total, limit, offset })
 
   } catch (error) {
     console.error("Error fetching colors:", error)

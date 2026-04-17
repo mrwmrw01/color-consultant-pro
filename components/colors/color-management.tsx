@@ -33,10 +33,10 @@ export function ColorManagement({ colorCodes: initialColorCodes }: ColorManageme
 
   const refreshColors = async () => {
     try {
-      const response = await fetch('/api/colors')
+      const response = await fetch('/api/colors?limit=200')
       if (response.ok) {
-        const updatedColors = await response.json()
-        setColorCodes(updatedColors)
+        const data = await response.json()
+        setColorCodes(Array.isArray(data) ? data : (data.colors || []))
       }
     } catch (error) {
       console.error('Error refreshing colors:', error)

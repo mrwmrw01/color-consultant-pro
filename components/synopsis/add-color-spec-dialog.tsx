@@ -127,9 +127,10 @@ export function AddColorSpecDialog({
 
   const loadColors = async () => {
     try {
-      const response = await fetch(`/api/colors`)
+      const response = await fetch(`/api/colors?limit=200`)
       if (response.ok) {
-        const colorsData = await response.json()
+        const data = await response.json()
+        const colorsData = Array.isArray(data) ? data : (data.colors || [])
         setColors(colorsData)
         setFilteredColors(colorsData.slice(0, 50))
       }
