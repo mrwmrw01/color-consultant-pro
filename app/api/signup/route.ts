@@ -13,6 +13,14 @@ const signupSchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
+  // Restrict public signup unless explicitly enabled
+  if (process.env.ALLOW_PUBLIC_SIGNUP !== "true") {
+    return NextResponse.json(
+      { error: "Public signup is currently disabled. Contact your administrator for access." },
+      { status: 403 }
+    )
+  }
+
   try {
     const body = await request.json()
     const { email, password, firstName, lastName, companyName } = signupSchema.parse(body)

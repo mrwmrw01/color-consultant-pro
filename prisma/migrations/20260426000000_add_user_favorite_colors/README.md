@@ -1,0 +1,2 @@
+-- Create favorite colors table
+-- Migration: 20260426000000_add_user_favorite_colors
