@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Plus, Search, Users, Building2 } from "lucide-react"
+import { Plus, Search, Users, Building2, FileSpreadsheet } from "lucide-react"
 import Link from "next/link"
 import { ClientCard } from "./client-card"
+import { ImportClientsDialog } from "./import-clients-dialog"
 import { motion } from "framer-motion"
 
 interface ClientsListProps {
@@ -17,6 +18,7 @@ interface ClientsListProps {
 
 export function ClientsList({ clients }: ClientsListProps) {
   const [searchQuery, setSearchQuery] = useState("")
+  const [importOpen, setImportOpen] = useState(false)
   const router = useRouter()
 
   // Filter by search query
@@ -38,12 +40,22 @@ export function ClientsList({ clients }: ClientsListProps) {
             Manage your client relationships
           </p>
         </div>
-        <Button asChild style={{ backgroundColor: '#c47004' }}>
-          <Link href="/dashboard/clients/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Client
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            style={{ borderColor: '#d2691e', color: '#8b4513' }}
+          >
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Import Clients
+          </Button>
+          <Button asChild style={{ backgroundColor: '#c47004' }}>
+            <Link href="/dashboard/clients/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Client
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -113,6 +125,8 @@ export function ClientsList({ clients }: ClientsListProps) {
           ))}
         </div>
       )}
+
+      <ImportClientsDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   )
 }

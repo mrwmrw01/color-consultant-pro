@@ -8,13 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Users, Mail, Phone, FileText, Loader2 } from "lucide-react"
+import { ArrowLeft, Users, Mail, Phone, FileText, Loader2, User } from "lucide-react"
 import Link from "next/link"
 import toast from "react-hot-toast"
 
 export function CreateClientForm() {
   const [formData, setFormData] = useState({
     name: "",
+    contactName: "",
     email: "",
     phone: "",
     notes: ""
@@ -45,6 +46,7 @@ export function CreateClientForm() {
     try {
       const payload = {
         name: formData.name.trim(),
+        contactName: formData.contactName.trim() || null,
         email: formData.email.trim() || null,
         phone: formData.phone.trim() || null,
         notes: formData.notes.trim() || null
@@ -116,6 +118,24 @@ export function CreateClientForm() {
                 className="h-11 text-base"
                 autoComplete="name"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="contactName" className="text-base">Contact Name</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                <Input
+                  id="contactName"
+                  placeholder="Primary contact person"
+                  value={formData.contactName}
+                  onChange={(e) => handleInputChange("contactName", e.target.value)}
+                  className="pl-10 h-11 text-base"
+                  autoComplete="name"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                If different from client name (e.g., property manager, spouse)
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
