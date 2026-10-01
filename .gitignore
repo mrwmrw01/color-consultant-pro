@@ -62,3 +62,23 @@ scripts/scan-truncated.ts
 public/demo/
 UI_IMPROVEMENT_PRD/
 UI_IMPROVEMENT_PRD
+
+# integration noise (screenshots, automation scraps, AI-agent artifacts)
+/01-*.png
+/02-*.png
+/03-*.png
+/04-*.png
+/05-*.png
+/06-*.png
+/before-export.png
+/after-export.png
+/ec2-verify-*.png
+.playwright-cli/
+screenshots/
+dblclick.js
+final_verify.js
+focus_direct.js
+polish2.js
+singleclick.js
+UI_IMPROVEMENT_PRD/
+.claude/
