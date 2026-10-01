@@ -148,6 +148,7 @@ model Project {
   photos   Photo[]
   rooms    Room[]
   synopsis ColorSynopsis[]
+  synopsisDraft SynopsisDraft?
 
   @@unique([userId, name])
   @@index([userId])
@@ -367,4 +368,25 @@ model UserFavoriteColor {
   @@index([userId])
   @@index([colorId])
   @@map("user_favorite_colors")
+}
+
+model SynopsisDraft {
+  id          String    @id @default(cuid())
+  projectId   String    @unique
+  clientName  String
+  address     String?
+  email       String?
+  phone       String?
+  consultDate DateTime?
+
+  // Curated synopsis structure — see lib/synopsis-types.ts
+  structure   Json
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("synopsis_drafts")
 }

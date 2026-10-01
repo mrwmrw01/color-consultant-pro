@@ -189,6 +189,12 @@ export function ProjectDetail({ project: initialProject, globalRooms }: ProjectD
               View Synopsis
             </Link>
           </Button>
+          <Button variant="default" asChild>
+            <Link href={`/dashboard/projects/${project.id}/synopsis-draft`}>
+              <FileText className="h-4 w-4 mr-2" />
+              Edit Synopsis
+            </Link>
+          </Button>
           <EditProjectDialog project={project} onProjectUpdated={refreshProject} />
         </div>
       </div>
