@@ -26,7 +26,8 @@ import {
   X,
   PanelRightOpen,
   GripHorizontal,
-  Minimize2
+  Minimize2,
+  DoorOpen
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -35,17 +36,15 @@ import { AnnotationToolbar } from "./annotation-toolbar"
 import { DraggableZoomControls } from "./draggable-zoom-controls"
 import { MobileBottomSheet } from "./mobile-bottom-sheet"
 import { AddCustomColorDialog } from "@/components/colors/add-custom-color-dialog"
-import { QuickAddRoom } from "@/components/projects/quick-add-room"
 import { RecentColorsPicker } from "@/components/colors/recent-colors-picker"
 import { FavoritesSection } from "@/components/colors/favorites-section"
-import { SURFACE_TYPES, PRODUCT_LINES, SHEEN_OPTIONS } from "@/lib/types"
+import { SURFACE_TYPES, PRODUCT_LINES, SHEEN_OPTIONS, PRODUCT_LINES_BY_CATEGORY, type ProductLineCategory, detectProductMismatch } from "@/lib/types"
 import { addRecentColor } from "@/lib/recent-colors"
 import toast from "react-hot-toast"
 import Fuse from 'fuse.js'
 
 interface PhotoAnnotatorProps {
   photo: any
-  rooms?: any[]
   colors?: any[]
   allProjectPhotos?: any[]
   currentPhotoIndex?: number
@@ -68,9 +67,8 @@ interface Point {
   y: number
 }
 
-export function PhotoAnnotator({ 
-  photo, 
-  rooms: initialRooms = [], 
+export function PhotoAnnotator({
+  photo,
   colors: initialColors = [],
   allProjectPhotos = [],
   currentPhotoIndex = 0
@@ -84,13 +82,14 @@ export function PhotoAnnotator({
     opacity: 1
   })
   const [annotations, setAnnotations] = useState<any[]>(photo.annotations || [])
-  const [rooms, setRooms] = useState<any[]>(initialRooms)
   const [colors, setColors] = useState<any[]>(initialColors)
   const [selectedColorId, setSelectedColorId] = useState("")
   const [selectedSurface, setSelectedSurface] = useState("")
   const [selectedProductLine, setSelectedProductLine] = useState("")
   const [selectedSheen, setSelectedSheen] = useState("")
-  const [selectedRoomId, setSelectedRoomId] = useState(photo.roomId || "")
+  // Room is anchored at upload time — read-only in annotator
+  const photoRoomId = photo.roomId || ""
+  const photoRoomName = photo.room?.name || null
   const [annotationNotes, setAnnotationNotes] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [colorSearch, setColorSearch] = useState("")
@@ -102,6 +101,7 @@ export function PhotoAnnotator({
   const [pendingTextData, setPendingTextData] = useState<any>(null)
   const [editingAnnotation, setEditingAnnotation] = useState<any>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [mismatchOverride, setMismatchOverride] = useState(false)
   const [showCopyDialog, setShowCopyDialog] = useState(false)
   const [annotationSuggestions, setAnnotationSuggestions] = useState<any[]>([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
@@ -114,8 +114,7 @@ export function PhotoAnnotator({
     surfaceType: '',
     productLine: '',
     sheen: '',
-    notes: '',
-    roomId: ''
+    notes: ''
   })
   
   // Highlighted annotation tracking
@@ -321,13 +320,26 @@ export function PhotoAnnotator({
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Sort colors by manufacturer and name
-  const sortedColors = [...colors].sort((a, b) => {
+  // Reset mismatch override when product changes
+  useEffect(() => { setMismatchOverride(false) }, [selectedProductLine])
+
+  // Detect product line / room location mismatch (room is fixed from photo)
+  const productMismatch = !mismatchOverride
+    ? detectProductMismatch(photo.room?.roomType, selectedProductLine)
+    : null
+
+  // Mismatch detection for edit dialog (only when open)
+  const editProductMismatch = showEditDialog
+    ? detectProductMismatch(photo.room?.roomType, editForm.productLine)
+    : null
+
+  // Sort colors by manufacturer and name (memoized to avoid busting Fuse index)
+  const sortedColors = useMemo(() => [...colors].sort((a, b) => {
     if (a.manufacturer !== b.manufacturer) {
       return a.manufacturer.localeCompare(b.manufacturer)
     }
     return a.name.localeCompare(b.name)
-  })
+  }), [colors])
 
   // Configure Fuse.js for fuzzy search
   const fuse = useMemo(() => {
@@ -393,23 +405,6 @@ export function PhotoAnnotator({
     refreshColors(true)
   }
 
-  // Function to refresh rooms from server
-  const refreshRooms = async () => {
-    try {
-      const response = await fetch(`/api/projects/${photo.projectId}/rooms`)
-      if (response.ok) {
-        const fetchedRooms = await response.json()
-        setRooms(fetchedRooms)
-      }
-    } catch (error) {
-      console.error("Failed to refresh rooms:", error)
-    }
-  }
-
-  const handleRoomAdded = (newRoomId: string) => {
-    refreshRooms()
-    setSelectedRoomId(newRoomId)
-  }
 
   // Function to load annotation suggestions
   const loadAnnotationSuggestions = async () => {
@@ -436,9 +431,6 @@ export function PhotoAnnotator({
     setSelectedSurface(suggestion.surfaceType)
     setSelectedProductLine(suggestion.productLine)
     setSelectedSheen(suggestion.sheen)
-    if (suggestion.roomId) {
-      setSelectedRoomId(suggestion.roomId)
-    }
     setShowCopyDialog(false)
     toast.success(`Copied: ${suggestion.colorName} - ${suggestion.surfaceType}`, {
       duration: 4000
@@ -476,9 +468,6 @@ export function PhotoAnnotator({
           setSelectedSurface(lastAnnotation.surfaceType || "")
           setSelectedProductLine(lastAnnotation.productLine || "")
           setSelectedSheen(lastAnnotation.sheen || "")
-          if (lastAnnotation.roomId) {
-            setSelectedRoomId(lastAnnotation.roomId)
-          }
           
           toast.success(`Copied from previous photo: ${lastAnnotation.color?.name || 'Annotation'}`, {
             duration: 4000
@@ -617,7 +606,7 @@ export function PhotoAnnotator({
           productLine: selectedProductLine || undefined,
           sheen: selectedSheen || undefined,
           notes: annotationNotes || undefined,
-          roomId: selectedRoomId || undefined
+          roomId: photoRoomId || undefined
         })
       })
 
@@ -631,7 +620,7 @@ export function PhotoAnnotator({
           // Show appropriate success message with warnings
           if (!selectedColorId || !selectedSurface) {
             toast.success("Annotation saved! Add color and surface details in the panel")
-          } else if (!selectedRoomId) {
+          } else if (!photoRoomId) {
             toast.success("Annotation saved! Note: No room assigned - will appear as 'Global' in synopsis", {
               duration: 5000
             })
@@ -804,8 +793,7 @@ export function PhotoAnnotator({
       surfaceType: annotation.surfaceType || '',
       productLine: annotation.productLine || '',
       sheen: annotation.sheen || '',
-      notes: annotation.notes || '',
-      roomId: annotation.roomId || ''
+      notes: annotation.notes || ''
     })
     setShowEditDialog(true)
   }
@@ -1434,47 +1422,17 @@ export function PhotoAnnotator({
                   )}
                 </div>
 
-                {/* Room Selection */}
+                {/* Room */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="roomId" className="text-xs">Room (Optional)</Label>
-                    <QuickAddRoom 
-                      projectId={photo.projectId} 
-                      onRoomAdded={handleRoomAdded}
-                    />
+                  <Label className="text-xs">Room</Label>
+                  <div className="flex items-center gap-1.5 h-9 px-3 rounded-md border bg-muted/50 text-sm">
+                    <DoorOpen className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                    {photoRoomName ? (
+                      <span className="truncate">{photoRoomName}</span>
+                    ) : (
+                      <span className="text-muted-foreground">No room assigned</span>
+                    )}
                   </div>
-                  <Select value={selectedRoomId || "none"} onValueChange={(val) => setSelectedRoomId(val === "none" ? "" : val)}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Select room..." />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px]">
-                      <SelectItem value="none">None</SelectItem>
-                      {(() => {
-                        // Group rooms by room type for hierarchical display
-                        const grouped = rooms.reduce((acc: Record<string, any[]>, room) => {
-                          const type = room.roomType || 'Other'
-                          if (!acc[type]) acc[type] = []
-                          acc[type].push(room)
-                          return acc
-                        }, {})
-
-                        return Object.entries(grouped)
-                          .sort(([a], [b]) => a.localeCompare(b))
-                          .map(([roomType, roomsInType]) => (
-                            <SelectGroup key={roomType}>
-                              <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                                {roomType}
-                              </SelectLabel>
-                              {roomsInType.map(room => (
-                                <SelectItem key={room.id} value={room.id} className="pl-6">
-                                  {room.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          ))
-                      })()}
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 {/* Product Line Selection */}
@@ -1484,16 +1442,43 @@ export function PhotoAnnotator({
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder="Select product line..." />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[300px]">
                       <SelectItem value="none">None</SelectItem>
-                      {PRODUCT_LINES.map(productLine => (
-                        <SelectItem key={productLine} value={productLine}>
-                          {productLine}
-                        </SelectItem>
+                      {(Object.entries(PRODUCT_LINES_BY_CATEGORY) as [ProductLineCategory, string[]][]).map(([category, lines]) => (
+                        <SelectGroup key={category}>
+                          <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                            {category}
+                          </SelectLabel>
+                          {lines.map(pl => (
+                            <SelectItem key={pl} value={pl} className="pl-6">{pl}</SelectItem>
+                          ))}
+                        </SelectGroup>
                       ))}
+                      <SelectGroup>
+                        <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Other</SelectLabel>
+                        <SelectItem value="Custom" className="pl-6">Custom</SelectItem>
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Product/Room Mismatch Warning */}
+                {productMismatch && (
+                  <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 dark:border-amber-700 dark:bg-amber-950">
+                    <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                      {productMismatch === 'interior-product-exterior-room'
+                        ? '⚠ Interior product selected for an exterior room'
+                        : '⚠ Exterior product selected for an interior room'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setMismatchOverride(true)}
+                      className="mt-1 text-xs font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
+                    >
+                      Override — I know what I'm doing
+                    </button>
+                  </div>
+                )}
 
                 {/* Sheen Selection */}
                 <div className="space-y-1.5">
@@ -1789,47 +1774,17 @@ export function PhotoAnnotator({
               )}
             </div>
 
-            {/* Room Selection */}
+            {/* Room */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="mobileRoomId">Room</Label>
-                <QuickAddRoom 
-                  projectId={photo.projectId} 
-                  onRoomAdded={handleRoomAdded}
-                />
+              <Label>Room</Label>
+              <div className="flex items-center gap-2 h-10 px-3 rounded-md border bg-muted/50 text-sm">
+                <DoorOpen className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                {photoRoomName ? (
+                  <span className="truncate">{photoRoomName}</span>
+                ) : (
+                  <span className="text-muted-foreground">No room assigned</span>
+                )}
               </div>
-              <Select value={selectedRoomId || "none"} onValueChange={(val) => setSelectedRoomId(val === "none" ? "" : val)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select room..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  <SelectItem value="none">None</SelectItem>
-                  {(() => {
-                    // Group rooms by room type for hierarchical display
-                    const grouped = rooms.reduce((acc: Record<string, any[]>, room) => {
-                      const type = room.roomType || 'Other'
-                      if (!acc[type]) acc[type] = []
-                      acc[type].push(room)
-                      return acc
-                    }, {})
-
-                    return Object.entries(grouped)
-                      .sort(([a], [b]) => a.localeCompare(b))
-                      .map(([roomType, roomsInType]) => (
-                        <SelectGroup key={roomType}>
-                          <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                            {roomType}
-                          </SelectLabel>
-                          {roomsInType.map(room => (
-                            <SelectItem key={room.id} value={room.id} className="pl-6">
-                              {room.name}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      ))
-                  })()}
-                </SelectContent>
-              </Select>
             </div>
 
             {/* Product Line Selection */}
@@ -1839,16 +1794,43 @@ export function PhotoAnnotator({
                 <SelectTrigger>
                   <SelectValue placeholder="Select product line..." />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px]">
                   <SelectItem value="none">None</SelectItem>
-                  {PRODUCT_LINES.map(productLine => (
-                    <SelectItem key={productLine} value={productLine}>
-                      {productLine}
-                    </SelectItem>
+                  {(Object.entries(PRODUCT_LINES_BY_CATEGORY) as [ProductLineCategory, string[]][]).map(([category, lines]) => (
+                    <SelectGroup key={category}>
+                      <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                        {category}
+                      </SelectLabel>
+                      {lines.map(pl => (
+                        <SelectItem key={pl} value={pl} className="pl-6">{pl}</SelectItem>
+                      ))}
+                    </SelectGroup>
                   ))}
+                  <SelectGroup>
+                    <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Other</SelectLabel>
+                    <SelectItem value="Custom" className="pl-6">Custom</SelectItem>
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Product/Room Mismatch Warning (Mobile) */}
+            {productMismatch && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 dark:border-amber-700 dark:bg-amber-950">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                  {productMismatch === 'interior-product-exterior-room'
+                    ? '⚠ Interior product selected for an exterior room'
+                    : '⚠ Exterior product selected for an interior room'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setMismatchOverride(true)}
+                  className="mt-1 text-sm font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
+                >
+                  Override — I know what I'm doing
+                </button>
+              </div>
+            )}
 
             {/* Sheen Selection */}
             <div className="space-y-2">
@@ -1951,72 +1933,62 @@ export function PhotoAnnotator({
               </Select>
             </div>
 
-            {/* Room Selection for Edit Dialog */}
+            {/* Room */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="editRoom">Room (Optional)</Label>
-                <QuickAddRoom 
-                  projectId={photo.projectId} 
-                  onRoomAdded={handleRoomAdded}
-                />
+              <Label>Room</Label>
+              <div className="flex items-center gap-2 h-10 px-3 rounded-md border bg-muted/50 text-sm">
+                <DoorOpen className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                {photoRoomName ? (
+                  <span className="truncate">{photoRoomName}</span>
+                ) : (
+                  <span className="text-muted-foreground">No room assigned</span>
+                )}
               </div>
-              <Select 
-                value={editForm.roomId || "none"} 
-                onValueChange={(value) => setEditForm(prev => ({ ...prev, roomId: value === "none" ? "" : value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select room..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  <SelectItem value="none">None</SelectItem>
-                  {(() => {
-                    // Group rooms by room type for hierarchical display
-                    const grouped = rooms.reduce((acc: Record<string, any[]>, room) => {
-                      const type = room.roomType || 'Other'
-                      if (!acc[type]) acc[type] = []
-                      acc[type].push(room)
-                      return acc
-                    }, {})
-
-                    return Object.entries(grouped)
-                      .sort(([a], [b]) => a.localeCompare(b))
-                      .map(([roomType, roomsInType]) => (
-                        <SelectGroup key={roomType}>
-                          <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                            {roomType}
-                          </SelectLabel>
-                          {roomsInType.map(room => (
-                            <SelectItem key={room.id} value={room.id} className="pl-6">
-                              {room.name}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      ))
-                  })()}
-                </SelectContent>
-              </Select>
             </div>
 
             {/* Product Line Selection for Edit Dialog */}
             <div className="space-y-2">
               <Label htmlFor="editProductLine">Product Line (Optional)</Label>
-              <Select 
-                value={editForm.productLine || "none"} 
+              <Select
+                value={editForm.productLine || "none"}
                 onValueChange={(value) => setEditForm(prev => ({ ...prev, productLine: value === "none" ? "" : value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select product line..." />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px]">
                   <SelectItem value="none">None</SelectItem>
-                  {PRODUCT_LINES.map(productLine => (
-                    <SelectItem key={productLine} value={productLine}>
-                      {productLine}
-                    </SelectItem>
+                  {(Object.entries(PRODUCT_LINES_BY_CATEGORY) as [ProductLineCategory, string[]][]).map(([category, lines]) => (
+                    <SelectGroup key={category}>
+                      <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                        {category}
+                      </SelectLabel>
+                      {lines.map(pl => (
+                        <SelectItem key={pl} value={pl} className="pl-6">{pl}</SelectItem>
+                      ))}
+                    </SelectGroup>
                   ))}
+                  <SelectGroup>
+                    <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Other</SelectLabel>
+                    <SelectItem value="Custom" className="pl-6">Custom</SelectItem>
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Product/Room Mismatch Warning (Edit Dialog) */}
+            {editProductMismatch && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 dark:border-amber-700 dark:bg-amber-950">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                  {editProductMismatch === 'interior-product-exterior-room'
+                    ? '⚠ Interior product selected for an exterior room'
+                    : '⚠ Exterior product selected for an interior room'}
+                </p>
+                <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                  This is a warning only — save will still proceed.
+                </p>
+              </div>
+            )}
 
             {/* Sheen Selection for Edit Dialog */}
             <div className="space-y-2">

@@ -34,15 +34,17 @@ interface Room {
 interface CreateProjectFormHierarchyProps {
   propertyId: string
   propertyName: string
+  propertyAddress?: string | null
   clientId: string
   clientName: string
 }
 
-export function CreateProjectFormHierarchy({ 
-  propertyId, 
-  propertyName, 
-  clientId, 
-  clientName 
+export function CreateProjectFormHierarchy({
+  propertyId,
+  propertyName,
+  propertyAddress,
+  clientId,
+  clientName
 }: CreateProjectFormHierarchyProps) {
   const [formData, setFormData] = useState({
     name: "",
@@ -171,6 +173,9 @@ export function CreateProjectFormHierarchy({
             <Building2 className="h-4 w-4" />
             <span>{propertyName}</span>
           </div>
+          {propertyAddress && propertyAddress !== propertyName && (
+            <p className="text-xs text-muted-foreground mt-1 ml-1">{propertyAddress}</p>
+          )}
         </div>
       </div>
 

@@ -25,8 +25,24 @@ export default async function PhotoUploadPage({ searchParams }: PhotoUploadPageP
   // Fetch all global rooms
   const globalRooms = await prisma.room.findMany({
     where: { projectId: null },
-    orderBy: { name: 'asc' }
+    orderBy: [
+      { roomType: 'asc' },
+      { name: 'asc' }
+    ]
   })
 
-  return <PhotoUpload projects={projects} globalRooms={globalRooms} preselectedProjectId={searchParams.project} />
+  // Serialize dates for client component
+  const serializedRooms = globalRooms.map(room => ({
+    ...room,
+    createdAt: room.createdAt.toISOString(),
+    updatedAt: room.updatedAt.toISOString(),
+  }))
+
+  const serializedProjects = projects.map(p => ({
+    ...p,
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
+  }))
+
+  return <PhotoUpload projects={serializedProjects} globalRooms={serializedRooms} preselectedProjectId={searchParams.project} />
 }

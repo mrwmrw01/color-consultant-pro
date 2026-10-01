@@ -87,15 +87,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Create project with rooms if provided
+    // Auto-populate deprecated fields from hierarchy when not explicitly provided
     const projectData = {
       name,
       description: description || null,
       propertyId: propertyId,
-      // Keep old fields for backward compatibility (optional)
-      clientName: clientName || null,
-      clientEmail: clientEmail || null,
-      clientPhone: clientPhone || null,
-      address: address || null,
+      clientName: clientName || property.client.contactName || property.client.name,
+      clientEmail: clientEmail || property.client.email || null,
+      clientPhone: clientPhone || property.client.phone || null,
+      address: address || property.address || null,
       userId: session.user.id,
       rooms: rooms && rooms.length > 0 ? {
         connectOrCreate: rooms.map((room: { name: string; description: string | null }) => ({

@@ -57,11 +57,6 @@ export default async function AnnotatePhotoPage({ params }: PageProps) {
   // Find current photo index
   const currentPhotoIndex = allProjectPhotos.findIndex(p => p.id === params.photoId)
 
-  // Get all global rooms
-  const globalRooms = await prisma.room.findMany({
-    orderBy: { name: "asc" }
-  })
-
   // Get all colors
   const colors = await prisma.color.findMany({
     orderBy: [
@@ -74,7 +69,6 @@ export default async function AnnotatePhotoPage({ params }: PageProps) {
   return (
     <PhotoAnnotator
       photo={photo}
-      rooms={globalRooms}
       colors={colors}
       allProjectPhotos={allProjectPhotos}
       currentPhotoIndex={currentPhotoIndex}

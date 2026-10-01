@@ -38,9 +38,10 @@ export default async function NewProjectPage({
 
   return (
     <div className="p-8 rounded-lg" style={{ backgroundColor: '#fef3e8' }}>
-      <CreateProjectFormHierarchy 
-        propertyId={property.id} 
+      <CreateProjectFormHierarchy
+        propertyId={property.id}
         propertyName={property.name || property.address || "Property"}
+        propertyAddress={property.address}
         clientId={property.client.id}
         clientName={property.client.name}
       />

@@ -9,13 +9,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Building2, MapPin, Loader2 } from "lucide-react"
+import { ArrowLeft, Building2, MapPin, Loader2, User, Mail, Phone } from "lucide-react"
 import Link from "next/link"
 import toast from "react-hot-toast"
 
 interface CreatePropertyFormProps {
   clientId: string
   clientName: string
+  clientContactName?: string | null
+  clientEmail?: string | null
+  clientPhone?: string | null
 }
 
 const PROPERTY_TYPES = [
@@ -29,11 +32,14 @@ const PROPERTY_TYPES = [
   "Other"
 ]
 
-export function CreatePropertyForm({ clientId, clientName }: CreatePropertyFormProps) {
+export function CreatePropertyForm({ clientId, clientName, clientContactName, clientEmail, clientPhone }: CreatePropertyFormProps) {
   const [formData, setFormData] = useState({
     name: "",
     address: "",
     type: "",
+    contactName: clientContactName || clientName || "",
+    contactEmail: clientEmail || "",
+    contactPhone: clientPhone || "",
     notes: ""
   })
   const [isLoading, setIsLoading] = useState(false)
@@ -64,6 +70,9 @@ export function CreatePropertyForm({ clientId, clientName }: CreatePropertyFormP
         name: formData.name.trim() || null,
         address: formData.address.trim() || null,
         type: formData.type || null,
+        contactName: formData.contactName.trim() || null,
+        contactEmail: formData.contactEmail.trim() || null,
+        contactPhone: formData.contactPhone.trim() || null,
         notes: formData.notes.trim() || null
       }
 
@@ -180,11 +189,76 @@ export function CreatePropertyForm({ clientId, clientName }: CreatePropertyFormP
           </CardContent>
         </Card>
 
+        {/* Property Contact */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Property Contact
+            </CardTitle>
+            <CardDescription>
+              Pre-filled from client — edit if this property has a different contact
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="contactName" className="text-base">Contact Name</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                <Input
+                  id="contactName"
+                  placeholder="Contact person for this property"
+                  value={formData.contactName}
+                  onChange={(e) => handleInputChange("contactName", e.target.value)}
+                  className="pl-10 h-11 text-base"
+                  autoComplete="name"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="contactEmail" className="text-base">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  <Input
+                    id="contactEmail"
+                    type="email"
+                    placeholder="contact@example.com"
+                    value={formData.contactEmail}
+                    onChange={(e) => handleInputChange("contactEmail", e.target.value)}
+                    className="pl-10 h-11 text-base"
+                    autoComplete="email"
+                    inputMode="email"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="contactPhone" className="text-base">Phone</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  <Input
+                    id="contactPhone"
+                    type="tel"
+                    placeholder="(555) 123-4567"
+                    value={formData.contactPhone}
+                    onChange={(e) => handleInputChange("contactPhone", e.target.value)}
+                    className="pl-10 h-11 text-base"
+                    autoComplete="tel"
+                    inputMode="tel"
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Submit */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <Button 
-            type="submit" 
-            disabled={isLoading} 
+          <Button
+            type="submit"
+            disabled={isLoading}
             className="flex-1 h-12 text-base font-semibold touch-manipulation"
           >
             {isLoading ? (

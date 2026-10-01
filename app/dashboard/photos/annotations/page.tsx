@@ -15,46 +15,54 @@ export default async function AnnotationsPage() {
     redirect("/auth/signin")
   }
 
-  // Get all annotations for user's projects
-  const annotations = await prisma.annotation.findMany({
-    where: {
-      photo: {
-        project: {
-          userId: session.user.id
-        }
-      }
-    },
-    include: {
-      photo: {
-        include: {
-          project: true
+  // Run all queries in parallel
+  const [annotations, projects, colors, globalRooms] = await Promise.all([
+    prisma.annotation.findMany({
+      where: {
+        photo: {
+          project: {
+            userId: session.user.id
+          }
         }
       },
-      room: true,
-      color: true
-    },
-    orderBy: { createdAt: "desc" }
-  })
-
-  // Get user's projects with rooms
-  const projects = await prisma.project.findMany({
-    where: { userId: session.user.id },
-    include: {
-      rooms: {
-        orderBy: { name: 'asc' }
-      }
-    },
-    orderBy: { name: "asc" }
-  })
-
-  // Get all colors
-  const colors = await prisma.color.findMany({
-    orderBy: [
-      { usageCount: 'desc' },
-      { manufacturer: 'asc' },
-      { name: 'asc' }
-    ]
-  })
+      include: {
+        photo: {
+          include: {
+            project: true
+          }
+        },
+        room: true,
+        color: true
+      },
+      orderBy: { createdAt: "desc" }
+    }),
+    prisma.project.findMany({
+      where: { userId: session.user.id },
+      include: {
+        rooms: {
+          orderBy: { name: 'asc' }
+        }
+      },
+      orderBy: { name: "asc" }
+    }),
+    prisma.color.findMany({
+      orderBy: [
+        { usageCount: 'desc' },
+        { manufacturer: 'asc' },
+        { name: 'asc' }
+      ]
+    }),
+    // Rooms linked to user's projects or unlinked (global)
+    prisma.room.findMany({
+      where: {
+        OR: [
+          { project: { userId: session.user.id } },
+          { projectId: null }
+        ]
+      },
+      orderBy: { name: "asc" }
+    })
+  ])
 
   // Serialize the data properly for client components
   const serializedAnnotations = annotations.map(annotation => ({
@@ -102,11 +110,18 @@ export default async function AnnotationsPage() {
     firstUsedAt: color.firstUsedAt ? color.firstUsedAt.toISOString() : null,
   }))
 
+  const serializedGlobalRooms = globalRooms.map(room => ({
+    ...room,
+    createdAt: room.createdAt.toISOString(),
+    updatedAt: room.updatedAt.toISOString(),
+  }))
+
   return (
     <AnnotationsManager
       annotations={serializedAnnotations}
       projects={serializedProjects}
       colors={serializedColors}
+      globalRooms={serializedGlobalRooms}
     />
   )
 }

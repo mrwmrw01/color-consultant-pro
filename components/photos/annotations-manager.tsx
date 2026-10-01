@@ -92,6 +92,7 @@ interface AnnotationsManagerProps {
   annotations: any[]
   projects: any[]
   colors: any[]
+  globalRooms?: any[]
 }
 
 interface FilterState {
@@ -103,7 +104,7 @@ interface FilterState {
   dateRange: string
 }
 
-export function AnnotationsManager({ annotations: initialAnnotations, projects, colors }: AnnotationsManagerProps) {
+export function AnnotationsManager({ annotations: initialAnnotations, projects, colors, globalRooms = [] }: AnnotationsManagerProps) {
   // Filter out any invalid annotations on initial load
   const validInitialAnnotations = (initialAnnotations || []).filter(a => 
     a != null && 
@@ -135,13 +136,27 @@ export function AnnotationsManager({ annotations: initialAnnotations, projects, 
     roomId: ''
   })
 
-  // Get available rooms based on selected project
-  const availableRooms = filters.project === 'all' 
+  // Merge project rooms with global rooms, deduplicating by id
+  const mergeWithGlobal = (projectRooms: any[]) => {
+    const seen = new Set(projectRooms.map((r: any) => r.id))
+    const merged = [...projectRooms]
+    for (const room of globalRooms) {
+      if (room && room.id && !seen.has(room.id)) {
+        seen.add(room.id)
+        merged.push(room)
+      }
+    }
+    return merged
+  }
+
+  // Get available rooms based on selected project (includes global rooms)
+  const projectRooms = filters.project === 'all'
     ? projects.flatMap(p => p.rooms || []).filter((room: any) => room != null)
     : (projects.find(p => p.id === filters.project)?.rooms || []).filter((room: any) => room != null)
+  const availableRooms = mergeWithGlobal(projectRooms)
 
-  // Get all rooms for edit dialog (across all projects)
-  const allRooms = projects.flatMap(p => p.rooms || []).filter((room: any) => room != null)
+  // Get all rooms for edit dialog (across all projects + global)
+  const allRooms = mergeWithGlobal(projects.flatMap(p => p.rooms || []).filter((room: any) => room != null))
 
   // Apply filters
   useEffect(() => {

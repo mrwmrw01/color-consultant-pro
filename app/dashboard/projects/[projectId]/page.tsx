@@ -67,8 +67,21 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   // Fetch all global rooms
   const globalRooms = await prisma.room.findMany({
     where: { projectId: null },
-    orderBy: { name: 'asc' }
+    orderBy: [
+      { roomType: 'asc' },
+      { name: 'asc' }
+    ]
   })
 
-  return <ProjectDetail project={project} globalRooms={globalRooms} />
+  // Serialize dates for client component
+  const serializedGlobalRooms = globalRooms.map(room => ({
+    ...room,
+    createdAt: room.createdAt.toISOString(),
+    updatedAt: room.updatedAt.toISOString(),
+  }))
+
+  // Deep-serialize the project object (has nested dates throughout)
+  const serializedProject = JSON.parse(JSON.stringify(project))
+
+  return <ProjectDetail project={serializedProject} globalRooms={serializedGlobalRooms} />
 }

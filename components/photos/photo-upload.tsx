@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
@@ -227,13 +227,30 @@ export function PhotoUpload({ projects, globalRooms, preselectedProjectId }: Pho
                 <SelectTrigger>
                   <SelectValue placeholder="Select a room" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px]">
                   <SelectItem value="none">No specific room</SelectItem>
-                  {availableRooms.map((room: any) => (
-                    <SelectItem key={room.id} value={room.id}>
-                      {room.name}
-                    </SelectItem>
-                  ))}
+                  {(() => {
+                    const grouped = availableRooms.reduce((acc: Record<string, any[]>, room: any) => {
+                      const type = room.roomType || 'Other'
+                      if (!acc[type]) acc[type] = []
+                      acc[type].push(room)
+                      return acc
+                    }, {})
+                    return Object.entries(grouped)
+                      .sort(([a], [b]) => a.localeCompare(b))
+                      .map(([roomType, roomsInType]) => (
+                        <SelectGroup key={roomType}>
+                          <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                            {roomType}
+                          </SelectLabel>
+                          {(roomsInType as any[]).map(room => (
+                            <SelectItem key={room.id} value={room.id} className="pl-6">
+                              {room.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      ))
+                  })()}
                 </SelectContent>
               </Select>
             </div>

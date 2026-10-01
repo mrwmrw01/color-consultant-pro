@@ -5,6 +5,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import {
   Dialog,
@@ -35,7 +36,8 @@ import {
   Image as ImageIcon,
   Loader2,
   Trash2,
-  DoorOpen
+  DoorOpen,
+  Search
 } from "lucide-react"
 import {
   AlertDialog,
@@ -64,6 +66,18 @@ export function PhotoDetail({ photo }: PhotoDetailProps) {
   const [isEditingRoom, setIsEditingRoom] = useState(false)
   const [selectedRoomId, setSelectedRoomId] = useState<string>(photo.roomId || "none")
   const [isUpdatingRoom, setIsUpdatingRoom] = useState(false)
+  const [fetchedRooms, setFetchedRooms] = useState<any[]>([])
+  const [roomSearchQuery, setRoomSearchQuery] = useState("")
+
+  // Fetch all global rooms when room dialog opens
+  useEffect(() => {
+    if (isEditingRoom) {
+      fetch('/api/rooms')
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setFetchedRooms(data))
+        .catch(() => setFetchedRooms([]))
+    }
+  }, [isEditingRoom])
   const [hasAnnotatedVersion, setHasAnnotatedVersion] = useState(false)
   const [isShowingAnnotated, setIsShowingAnnotated] = useState(false)
   const router = useRouter()
@@ -327,7 +341,7 @@ export function PhotoDetail({ photo }: PhotoDetailProps) {
                           variant="ghost" 
                           size="sm" 
                           className="h-6 px-2 text-xs"
-                          onClick={() => setSelectedRoomId(photo.roomId || "none")}
+                          onClick={() => { setSelectedRoomId(photo.roomId || "none"); setRoomSearchQuery("") }}
                         >
                           <DoorOpen className="h-3 w-3 mr-1" />
                           Edit
@@ -342,44 +356,70 @@ export function PhotoDetail({ photo }: PhotoDetailProps) {
                         </DialogHeader>
                         
                         <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="room">Room</Label>
-                            <Select
-                              value={selectedRoomId}
-                              onValueChange={setSelectedRoomId}
-                            >
-                              <SelectTrigger id="room">
-                                <SelectValue placeholder="Select a room" />
-                              </SelectTrigger>
-                              <SelectContent className="max-h-[300px]">
-                                <SelectItem value="none">No Room</SelectItem>
-                                {(() => {
-                                  const rooms = (photo.project.rooms || []) as any[]
-                                  // Group rooms by room type for hierarchical display
-                                  const grouped = rooms.reduce((acc: Record<string, any[]>, room: any) => {
-                                    const type = room.roomType || 'Other'
-                                    if (!acc[type]) acc[type] = []
-                                    acc[type].push(room)
-                                    return acc
-                                  }, {} as Record<string, any[]>)
+                          {/* Search */}
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="Search rooms..."
+                              value={roomSearchQuery}
+                              onChange={(e) => setRoomSearchQuery(e.target.value)}
+                              className="pl-9"
+                            />
+                          </div>
 
-                                  return Object.entries(grouped)
-                                    .sort(([a], [b]) => a.localeCompare(b))
-                                    .map(([roomType, roomsInType]: [string, any[]]) => (
-                                      <div key={roomType}>
-                                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
-                                          {roomType}
-                                        </div>
-                                        {roomsInType.map((room: any) => (
-                                          <SelectItem key={room.id} value={room.id} className="pl-6">
-                                            {room.name}
-                                          </SelectItem>
-                                        ))}
-                                      </div>
-                                    ))
-                                })()}
-                              </SelectContent>
-                            </Select>
+                          {/* Room Selection - scrollable list */}
+                          <div className="space-y-1">
+                            <Label>Room</Label>
+                            <div className="border rounded-md max-h-[300px] overflow-y-auto">
+                              <button
+                                type="button"
+                                className={`w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors ${selectedRoomId === "none" ? "bg-accent font-medium" : ""}`}
+                                onClick={() => setSelectedRoomId("none")}
+                              >
+                                No Room
+                              </button>
+                              <Separator />
+                              {(() => {
+                                const filtered = fetchedRooms.filter(room =>
+                                  room?.name?.toLowerCase().includes(roomSearchQuery.toLowerCase()) ||
+                                  room?.roomType?.toLowerCase().includes(roomSearchQuery.toLowerCase())
+                                )
+                                const grouped = filtered.reduce((acc: Record<string, any[]>, room: any) => {
+                                  const type = room.roomType || 'Other'
+                                  if (!acc[type]) acc[type] = []
+                                  acc[type].push(room)
+                                  return acc
+                                }, {} as Record<string, any[]>)
+
+                                const entries = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b))
+
+                                if (entries.length === 0 && roomSearchQuery) {
+                                  return (
+                                    <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                                      No rooms match "{roomSearchQuery}"
+                                    </div>
+                                  )
+                                }
+
+                                return entries.map(([roomType, roomsInType]: [string, any[]]) => (
+                                  <div key={roomType}>
+                                    <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">
+                                      {roomType}
+                                    </div>
+                                    {roomsInType.map((room: any) => (
+                                      <button
+                                        type="button"
+                                        key={room.id}
+                                        className={`w-full text-left px-3 py-2 pl-6 text-sm hover:bg-accent transition-colors ${selectedRoomId === room.id ? "bg-accent font-medium" : ""}`}
+                                        onClick={() => setSelectedRoomId(room.id)}
+                                      >
+                                        {room.name}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ))
+                              })()}
+                            </div>
                           </div>
                         </div>
                         

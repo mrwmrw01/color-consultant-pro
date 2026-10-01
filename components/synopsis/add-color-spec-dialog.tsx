@@ -115,7 +115,7 @@ export function AddColorSpecDialog({
 
   const loadRooms = async () => {
     try {
-      const response = await fetch(`/api/projects/${projectId}/rooms`)
+      const response = await fetch('/api/rooms')
       if (response.ok) {
         const roomsData = await response.json()
         setRooms(roomsData)

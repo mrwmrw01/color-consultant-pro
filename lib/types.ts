@@ -164,6 +164,7 @@ export interface DrawingTool {
 }
 
 export const SURFACE_TYPES = [
+  // Interior
   'Wall',
   'Ceiling',
   'Trim',
@@ -177,6 +178,23 @@ export const SURFACE_TYPES = [
   'Accent Wall',
   'Fireplace',
   'Built-in',
+  // Exterior
+  'Siding - Lap/Clapboard',
+  'Siding - Board & Batten',
+  'Siding - Shake/Shingle',
+  'Siding - Panel',
+  'Stucco',
+  'Brick',
+  'Stone',
+  'Fascia',
+  'Soffit',
+  'Gutter/Downspout',
+  'Shutter',
+  'Column/Post',
+  'Railing',
+  'Concrete/Foundation',
+  'Deck/Porch Floor',
+  // General
   'Other'
 ] as const
 
@@ -205,7 +223,7 @@ export const ROOM_HIERARCHY = {
   },
   'Dining': {
     label: 'Dining',
-    subtypes: ['Formal Dining', 'Casual Dining', 'Breakfast Room', 'Other']
+    subtypes: ['Dining Room', 'Breakfast Area', 'Breakfast Room', 'Other']
   },
   'Office/Study': {
     label: 'Office/Study',
@@ -235,9 +253,25 @@ export const ROOM_HIERARCHY = {
     label: 'Garage',
     subtypes: ['One Car', 'Two Car', 'Three Car', 'Workshop', 'Other']
   },
-  'Exterior': {
-    label: 'Exterior',
-    subtypes: ['Front', 'Back', 'Side', 'Porch', 'Deck', 'Other']
+  'Exterior - Body': {
+    label: 'Exterior - Body',
+    subtypes: ['Front Elevation', 'Side Elevation', 'Rear Elevation', 'Upper Story', 'Lower Story', 'Other']
+  },
+  'Exterior - Trim & Detail': {
+    label: 'Exterior - Trim & Detail',
+    subtypes: ['Window Trim', 'Door Trim', 'Corner Boards', 'Fascia/Soffit', 'Gable Trim', 'Other']
+  },
+  'Exterior - Accents': {
+    label: 'Exterior - Accents',
+    subtypes: ['Shutters', 'Front Door', 'Garage Door', 'Railings', 'Columns/Posts', 'Other']
+  },
+  'Exterior - Foundation & Structure': {
+    label: 'Exterior - Foundation & Structure',
+    subtypes: ['Foundation', 'Brick/Stone', 'Chimney', 'Retaining Wall', 'Other']
+  },
+  'Exterior - Other': {
+    label: 'Exterior - Other',
+    subtypes: ['Porch', 'Deck', 'Fence', 'Pergola', 'Outbuilding', 'Other']
   },
   'Other': {
     label: 'Other',
@@ -305,6 +339,47 @@ export const PRODUCT_LINES = [
 export const PRODUCT_LINES_BY_MANUFACTURER: Record<string, readonly string[]> = {
   'Sherwin Williams': SW_PRODUCT_LINES,
   'Benjamin Moore': BM_PRODUCT_LINES,
+}
+
+// Product lines categorized by location (Interior/Exterior/Both)
+export type ProductLineCategory = 'Interior' | 'Exterior' | 'Interior/Exterior'
+
+export function getProductLineCategory(productLine: string): ProductLineCategory {
+  if (productLine.includes('Interior/Exterior')) return 'Interior/Exterior'
+  if (productLine.includes('Exterior')) return 'Exterior'
+  if (productLine.includes('Interior')) return 'Interior'
+  return 'Interior' // default for Custom or unknown
+}
+
+export const PRODUCT_LINES_BY_CATEGORY: Record<ProductLineCategory, string[]> = {
+  'Interior': PRODUCT_LINES.filter(pl => pl !== 'Custom' && getProductLineCategory(pl) === 'Interior') as unknown as string[],
+  'Exterior': PRODUCT_LINES.filter(pl => getProductLineCategory(pl) === 'Exterior') as unknown as string[],
+  'Interior/Exterior': PRODUCT_LINES.filter(pl => getProductLineCategory(pl) === 'Interior/Exterior') as unknown as string[],
+}
+
+// Room location detection for mismatch warnings
+export function isExteriorRoom(roomType: string | null | undefined): boolean {
+  if (!roomType) return false
+  return roomType.startsWith('Exterior')
+}
+
+export function isInteriorRoom(roomType: string | null | undefined): boolean {
+  if (!roomType) return false
+  return !roomType.startsWith('Exterior') && roomType !== 'Other' && roomType !== 'Custom'
+}
+
+export type MismatchType = 'interior-product-exterior-room' | 'exterior-product-interior-room' | null
+
+export function detectProductMismatch(
+  roomType: string | null | undefined,
+  productLine: string | null | undefined
+): MismatchType {
+  if (!roomType || !productLine || productLine === 'Custom') return null
+  const plCategory = getProductLineCategory(productLine)
+  if (plCategory === 'Interior/Exterior') return null // universal products never mismatch
+  if (isExteriorRoom(roomType) && plCategory === 'Interior') return 'interior-product-exterior-room'
+  if (isInteriorRoom(roomType) && plCategory === 'Exterior') return 'exterior-product-interior-room'
+  return null
 }
 
 // Sheens - full set from all product lines

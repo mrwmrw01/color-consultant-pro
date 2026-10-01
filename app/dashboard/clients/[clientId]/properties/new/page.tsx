@@ -28,7 +28,13 @@ export default async function NewPropertyPage({ params }: { params: { clientId: 
 
   return (
     <div className="p-8 rounded-lg" style={{ backgroundColor: '#fef3e8' }}>
-      <CreatePropertyForm clientId={client.id} clientName={client.name} />
+      <CreatePropertyForm
+        clientId={client.id}
+        clientName={client.name}
+        clientContactName={client.contactName}
+        clientEmail={client.email}
+        clientPhone={client.phone}
+      />
     </div>
   )
 }

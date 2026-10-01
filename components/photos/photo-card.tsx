@@ -81,6 +81,17 @@ export function PhotoCard({ photo, viewMode, globalRooms }: PhotoCardProps) {
   const [showNewRoomDialog, setShowNewRoomDialog] = useState(false)
   const [isCreatingRoom, setIsCreatingRoom] = useState(false)
   const [roomSearchQuery, setRoomSearchQuery] = useState("")
+  const [fetchedRooms, setFetchedRooms] = useState<any[] | null>(null)
+
+  // Fetch all global rooms from API when dialog opens
+  useEffect(() => {
+    if (isEditingRoom) {
+      fetch('/api/rooms')
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setFetchedRooms(data))
+        .catch(() => setFetchedRooms([]))
+    }
+  }, [isEditingRoom])
   const [newRoomForm, setNewRoomForm] = useState({
     roomType: "" as RoomType | "",
     subType: "",
@@ -337,11 +348,14 @@ export function PhotoCard({ photo, viewMode, globalRooms }: PhotoCardProps) {
     }
   }
 
+  // Use API-fetched rooms (complete list) with fallback to prop
+  const allRooms = fetchedRooms || globalRooms || []
+
   // Filter rooms based on search query
-  const filteredRooms = globalRooms?.filter(room => 
+  const filteredRooms = allRooms.filter(room =>
     room?.name?.toLowerCase().includes(roomSearchQuery.toLowerCase()) ||
     room?.roomType?.toLowerCase().includes(roomSearchQuery.toLowerCase())
-  ) || []
+  )
 
   // Group filtered rooms by roomType
   const groupedRooms = filteredRooms.reduce((acc: any, room: any) => {
@@ -383,10 +397,21 @@ export function PhotoCard({ photo, viewMode, globalRooms }: PhotoCardProps) {
               </h3>
               <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
                 <span>{photo.project?.name}</span>
-                {photo.room && (
+                {photo.room ? (
                   <>
                     <span>•</span>
-                    <span>{photo.room.name}</span>
+                    <Badge variant="secondary" className="text-xs gap-1">
+                      <DoorOpen className="h-3 w-3" />
+                      {photo.room.name}
+                    </Badge>
+                  </>
+                ) : (
+                  <>
+                    <span>•</span>
+                    <Badge variant="outline" className="text-xs gap-1 text-muted-foreground">
+                      <DoorOpen className="h-3 w-3" />
+                      No room
+                    </Badge>
                   </>
                 )}
                 <span>•</span>
@@ -459,34 +484,43 @@ export function PhotoCard({ photo, viewMode, globalRooms }: PhotoCardProps) {
                           />
                         </div>
 
-                        {/* Room Selection */}
-                        <div className="space-y-2">
-                          <Label htmlFor="room-list">Room</Label>
-                          <Select
-                            value={selectedRoomId}
-                            onValueChange={setSelectedRoomId}
-                          >
-                            <SelectTrigger id="room-list">
-                              <SelectValue placeholder="Select a room" />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-[300px]">
-                              <SelectItem value="none">No Room</SelectItem>
-                              {Object.entries(groupedRooms)
-                                .sort(([a], [b]) => (a as string).localeCompare(b as string))
-                                .map(([roomType, roomsInType]: [string, any]) => (
-                                  <SelectGroup key={roomType}>
-                                    <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                                      {roomType}
-                                    </SelectLabel>
-                                    {(roomsInType as any[]).map(room => (
-                                      <SelectItem key={room.id} value={room.id} className="pl-6">
-                                        {room.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectGroup>
-                                ))}
-                            </SelectContent>
-                          </Select>
+                        {/* Room Selection - scrollable list */}
+                        <div className="space-y-1">
+                          <Label>Room</Label>
+                          <div className="border rounded-md max-h-[300px] overflow-y-auto">
+                            <button
+                              type="button"
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors ${selectedRoomId === "none" ? "bg-accent font-medium" : ""}`}
+                              onClick={() => setSelectedRoomId("none")}
+                            >
+                              No Room
+                            </button>
+                            <Separator />
+                            {Object.entries(groupedRooms)
+                              .sort(([a], [b]) => a.localeCompare(b))
+                              .map(([roomType, roomsInType]: [string, any]) => (
+                                <div key={roomType}>
+                                  <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">
+                                    {roomType}
+                                  </div>
+                                  {(roomsInType as any[]).map(room => (
+                                    <button
+                                      type="button"
+                                      key={room.id}
+                                      className={`w-full text-left px-3 py-2 pl-6 text-sm hover:bg-accent transition-colors ${selectedRoomId === room.id ? "bg-accent font-medium" : ""}`}
+                                      onClick={() => setSelectedRoomId(room.id)}
+                                    >
+                                      {room.name}
+                                    </button>
+                                  ))}
+                                </div>
+                              ))}
+                            {Object.keys(groupedRooms).length === 0 && roomSearchQuery && (
+                              <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                                No rooms match "{roomSearchQuery}"
+                              </div>
+                            )}
+                          </div>
                           {photo.room && (
                             <p className="text-sm text-gray-500">
                               Current: {photo.room.name}
@@ -511,16 +545,16 @@ export function PhotoCard({ photo, viewMode, globalRooms }: PhotoCardProps) {
                           </Button>
                         </div>
                       </div>
-                      
+
                       <DialogFooter>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           onClick={() => setIsEditingRoom(false)}
                           disabled={isUpdatingRoom}
                         >
                           Cancel
                         </Button>
-                        <Button 
+                        <Button
                           onClick={handleUpdateRoom}
                           disabled={isUpdatingRoom}
                         >
@@ -619,11 +653,16 @@ export function PhotoCard({ photo, viewMode, globalRooms }: PhotoCardProps) {
               <span className="truncate">{photo.project?.name}</span>
             </div>
             
-            {photo.room && (
-              <div className="flex items-center text-sm text-gray-600">
-                <span className="w-4 h-3 mr-1" /> {/* Spacer */}
+            {photo.room ? (
+              <Badge variant="secondary" className="text-xs gap-1 max-w-full">
+                <DoorOpen className="h-3 w-3 flex-shrink-0" />
                 <span className="truncate">{photo.room.name}</span>
-              </div>
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs gap-1 text-muted-foreground max-w-full">
+                <DoorOpen className="h-3 w-3 flex-shrink-0" />
+                No room
+              </Badge>
             )}
             
             <div className="flex items-center justify-between">
@@ -688,34 +727,43 @@ export function PhotoCard({ photo, viewMode, globalRooms }: PhotoCardProps) {
                     />
                   </div>
 
-                  {/* Room Selection */}
-                  <div className="space-y-2">
-                    <Label htmlFor="room">Room</Label>
-                    <Select
-                      value={selectedRoomId}
-                      onValueChange={setSelectedRoomId}
-                    >
-                      <SelectTrigger id="room">
-                        <SelectValue placeholder="Select a room" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px]">
-                        <SelectItem value="none">No Room</SelectItem>
-                        {Object.entries(groupedRooms)
-                          .sort(([a], [b]) => (a as string).localeCompare(b as string))
-                          .map(([roomType, roomsInType]: [string, any]) => (
-                            <SelectGroup key={roomType}>
-                              <SelectLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                                {roomType}
-                              </SelectLabel>
-                              {(roomsInType as any[]).map(room => (
-                                <SelectItem key={room.id} value={room.id} className="pl-6">
-                                  {room.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                  {/* Room Selection - scrollable list */}
+                  <div className="space-y-1">
+                    <Label>Room</Label>
+                    <div className="border rounded-md max-h-[300px] overflow-y-auto">
+                      <button
+                        type="button"
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors ${selectedRoomId === "none" ? "bg-accent font-medium" : ""}`}
+                        onClick={() => setSelectedRoomId("none")}
+                      >
+                        No Room
+                      </button>
+                      <Separator />
+                      {Object.entries(groupedRooms)
+                        .sort(([a], [b]) => a.localeCompare(b))
+                        .map(([roomType, roomsInType]: [string, any]) => (
+                          <div key={roomType}>
+                            <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">
+                              {roomType}
+                            </div>
+                            {(roomsInType as any[]).map(room => (
+                              <button
+                                type="button"
+                                key={room.id}
+                                className={`w-full text-left px-3 py-2 pl-6 text-sm hover:bg-accent transition-colors ${selectedRoomId === room.id ? "bg-accent font-medium" : ""}`}
+                                onClick={() => setSelectedRoomId(room.id)}
+                              >
+                                {room.name}
+                              </button>
+                            ))}
+                          </div>
+                        ))}
+                      {Object.keys(groupedRooms).length === 0 && roomSearchQuery && (
+                        <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                          No rooms match "{roomSearchQuery}"
+                        </div>
+                      )}
+                    </div>
                     {photo.room && (
                       <p className="text-sm text-gray-500">
                         Current: {photo.room.name}
@@ -740,16 +788,16 @@ export function PhotoCard({ photo, viewMode, globalRooms }: PhotoCardProps) {
                     </Button>
                   </div>
                 </div>
-                
+
                 <DialogFooter>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setIsEditingRoom(false)}
                     disabled={isUpdatingRoom}
                   >
                     Cancel
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleUpdateRoom}
                     disabled={isUpdatingRoom}
                   >
