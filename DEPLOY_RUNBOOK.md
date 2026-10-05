@@ -58,8 +58,25 @@ Or via the repo script (when Postgres runs in Docker on the app host):
 ## 3. Deploy the code
 
 paint.weadtech.net is served behind the Abacus AI CDN; deploy the origin exactly the way
-Field Beta v0.1 was deployed (git pull + rebuild + restart). The repo's helper scripts assume
-an EC2 host with PM2:
+Field Beta v0.1 was deployed (git pull + rebuild + restart, or the Abacus dashboard Deploy
+button). The repo's helper scripts assume an EC2 host with PM2:
+
+### Storage driver (NEW — the app no longer requires AWS)
+
+Since the AWS account (and the `colorguru-photos` S3 bucket) no longer exists, the app now
+has a pluggable storage layer (`lib/storage.ts`):
+
+- `STORAGE_DRIVER=local` — photos stored on the app server's disk under `LOCAL_UPLOADS_DIR`,
+  served via `/api/files?key=...`. Zero cloud dependencies. Use this if the app runs on a
+  server you control.
+- `STORAGE_DRIVER=s3` — AWS S3 (default), or any S3-compatible provider by setting
+  `S3_ENDPOINT_URL` (+ `S3_FORCE_PATH_STYLE=true`) — works with Cloudflare R2, Backblaze B2,
+  MinIO. Recommended for cloud hosting: create an R2 bucket (~free tier), set
+  `AWS_BUCKET_NAME=<bucket>`, `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` = R2 keys,
+  `AWS_REGION=auto`, `S3_ENDPOINT_URL=https://<accountid>.r2.cloudflarestorage.com`.
+
+Old photo rows still point at the deleted S3 bucket; re-upload photos after switching drivers
+(the recovered photos are in `/home/mark/recovery/photos/` and `recovery/originals/`).
 
 ### Path A — git pull on the app host (EC2 / PM2)
 
