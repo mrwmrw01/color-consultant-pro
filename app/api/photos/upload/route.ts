@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { deleteFile } from "@/lib/s3"
+import { putObject, getStoragePrefix } from "@/lib/storage"
 import {
   optimizeImage,
   validateImage,
@@ -11,33 +12,20 @@ import {
   generateBlurPlaceholder
 } from "@/lib/image-optimizer"
 import { checkRateLimit, uploadLimiter, getRateLimitHeaders } from "@/lib/rate-limiter"
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
-import { createS3Client, getBucketConfig } from "@/lib/aws-config"
 
 export const dynamic = "force-dynamic"
 
-const s3Client = createS3Client()
-const { bucketName, folderPrefix } = getBucketConfig()
-
-// Track uploaded S3 keys for potential cleanup
-interface UploadedS3File {
+// Track uploaded storage keys for potential cleanup
+interface UploadedFile {
   key: string
   size: number
 }
 
 /**
- * Upload a single file to S3
+ * Upload a single file to the configured storage driver (S3, R2/B2, or local).
  */
-async function uploadToS3(buffer: Buffer, key: string, contentType: string): Promise<string> {
-  const command = new PutObjectCommand({
-    Bucket: bucketName,
-    Key: key,
-    Body: buffer,
-    ContentType: contentType
-  })
-
-  await s3Client.send(command)
-  return key
+async function uploadToStorage(buffer: Buffer, key: string, contentType: string): Promise<string> {
+  return putObject(key, buffer, contentType)
 }
 
 /**
@@ -153,11 +141,12 @@ export async function POST(request: NextRequest) {
       // Log optimization results
       logOptimization(optimizationResult, file.name)
 
-      // Upload all 3 sizes to S3
+      // Upload all 3 sizes to the configured storage driver
       const timestamp = Date.now()
       const baseFileName = file.name.replace(/\.[^/.]+$/, '') // Remove extension
-      
-      // Track S3 keys for potential cleanup
+      const storagePrefix = getStoragePrefix()
+
+      // Track storage keys for potential cleanup
       const uploadedS3Keys: string[] = []
       let largePath = ''
       let mediumPath = ''
@@ -166,19 +155,19 @@ export async function POST(request: NextRequest) {
       try {
         // Upload all sizes
         ;[largePath, mediumPath, thumbnailPath] = await Promise.all([
-          uploadToS3(
+          uploadToStorage(
             optimizationResult.sizes.large,
-            `${folderPrefix}uploads/${timestamp}-${baseFileName}-large.webp`,
+            `${storagePrefix}${timestamp}-${baseFileName}-large.webp`,
             'image/webp'
           ),
-          uploadToS3(
+          uploadToStorage(
             optimizationResult.sizes.medium,
-            `${folderPrefix}uploads/${timestamp}-${baseFileName}-medium.webp`,
+            `${storagePrefix}${timestamp}-${baseFileName}-medium.webp`,
             'image/webp'
           ),
-          uploadToS3(
+          uploadToStorage(
             optimizationResult.sizes.thumbnail,
-            `${folderPrefix}uploads/${timestamp}-${baseFileName}-thumbnail.webp`,
+            `${storagePrefix}${timestamp}-${baseFileName}-thumbnail.webp`,
             'image/webp'
           )
         ])

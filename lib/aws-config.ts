@@ -155,7 +155,12 @@ export function createS3Client() {
     )
   }
   
-  const clientConfig: { region: string; credentials?: { accessKeyId: string; secretAccessKey: string } } = {
+  const clientConfig: {
+    region: string
+    credentials?: { accessKeyId: string; secretAccessKey: string }
+    endpoint?: string
+    forcePathStyle?: boolean
+  } = {
     region: config.region
   }
   
@@ -166,6 +171,14 @@ export function createS3Client() {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
     }
+  }
+  
+  // S3-compatible endpoints (Cloudflare R2, Backblaze B2, MinIO):
+  //   S3_ENDPOINT_URL=https://<accountid>.r2.cloudflarestorage.com
+  //   S3_FORCE_PATH_STYLE=true
+  if (process.env.S3_ENDPOINT_URL) {
+    clientConfig.endpoint = process.env.S3_ENDPOINT_URL
+    clientConfig.forcePathStyle = true
   }
   
   return new S3Client(clientConfig)

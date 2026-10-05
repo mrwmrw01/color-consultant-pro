@@ -2,17 +2,19 @@ import { NextResponse } from "next/server"
 import { getAWSConfigStatus, validateS3Connection } from "@/lib/aws-config"
 import { getCircuitBreakerStatus } from "@/lib/rate-limiter"
 import { prisma } from "@/lib/db"
+import { getStorageDriverName, getLocalUploadsDir } from "@/lib/storage"
+import { promises as fs } from "fs"
 
 export const dynamic = "force-dynamic"
 
 export async function GET() {
   const checks: {
     database: { status: string; error?: string }
-    s3: { status: string; error?: string; bucket?: string | null }
+    storage: { status: string; error?: string; bucket?: string | null; driver?: string }
     redis: { status: string; circuitOpen: boolean }
   } = {
     database: { status: "unknown" },
-    s3: { status: "unknown" },
+    storage: { status: "unknown", driver: getStorageDriverName() },
     redis: { status: "unknown", circuitOpen: false }
   }
   
@@ -25,18 +27,32 @@ export async function GET() {
     checks.database.error = error.message
   }
   
-  // Check S3 configuration
-  const s3Config = getAWSConfigStatus()
-  if (!s3Config.isValid) {
-    checks.s3.status = "error"
-    checks.s3.error = s3Config.errors.join("; ")
-    checks.s3.bucket = s3Config.bucketName
+  // Check storage driver
+  if (getStorageDriverName() === "local") {
+    try {
+      await fs.mkdir(getLocalUploadsDir(), { recursive: true })
+      const probe = `${getLocalUploadsDir()}/.healthcheck`
+      await fs.writeFile(probe, new Date().toISOString())
+      await fs.unlink(probe)
+      checks.storage.status = "ok"
+      checks.storage.bucket = getLocalUploadsDir()
+    } catch (error: any) {
+      checks.storage.status = "error"
+      checks.storage.error = error.message
+      checks.storage.bucket = getLocalUploadsDir()
+    }
   } else {
-    // Try actual S3 connection
-    const s3Check = await validateS3Connection()
-    checks.s3.status = s3Check.success ? "ok" : "error"
-    checks.s3.error = s3Check.error
-    checks.s3.bucket = s3Check.bucket
+    const s3Config = getAWSConfigStatus()
+    if (!s3Config.isValid) {
+      checks.storage.status = "error"
+      checks.storage.error = s3Config.errors.join("; ")
+      checks.storage.bucket = s3Config.bucketName
+    } else {
+      const s3Check = await validateS3Connection()
+      checks.storage.status = s3Check.success ? "ok" : "error"
+      checks.storage.error = s3Check.error
+      checks.storage.bucket = s3Check.bucket
+    }
   }
   
   // Check Redis circuit breaker
