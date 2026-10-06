@@ -4,6 +4,8 @@
 import { SessionProvider } from "next-auth/react"
 import { ThemeProvider } from "./theme-provider"
 import { Toaster } from "react-hot-toast"
+import { Toaster as SonnerToaster } from "./ui/sonner"
+import { Toaster as ShadcnToaster } from "./ui/toaster"
 import { useState, useEffect } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
@@ -35,7 +37,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
           disableTransitionOnChange
         >
           {children}
+          {/* Components use all three toast libraries; each needs its toaster mounted */}
           <Toaster position="top-right" />
+          <SonnerToaster richColors position="bottom-right" />
+          <ShadcnToaster />
         </ThemeProvider>
       </QueryClientProvider>
     </SessionProvider>
