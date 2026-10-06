@@ -66,17 +66,29 @@ export const authOptions: NextAuthOptions = {
         token.firstName = user.firstName || undefined
         token.lastName = user.lastName || undefined
         token.companyName = user.companyName || undefined
+        token.authTime = Date.now()
+        return token
       }
+      if (!token.id) return token
+
+      const current = await prisma.user.findUnique({
+        where: { id: token.id },
+        select: { name: true, firstName: true, lastName: true, companyName: true, passwordChangedAt: true },
+      })
+      // Revoke sessions of deleted users and sessions signed in before the
+      // last password change (tokens from before authTime existed count as 0).
+      // next-auth treats the error as signed out and clears the cookie.
+      if (!current || (current.passwordChangedAt && current.passwordChangedAt.getTime() > (token.authTime ?? 0))) {
+        throw new Error("Session revoked")
+      }
+
       // useSession().update() after a profile edit: reload from the database
       // rather than trusting client-supplied values
-      if (trigger === "update" && token.id) {
-        const fresh = await prisma.user.findUnique({ where: { id: token.id } })
-        if (fresh) {
-          token.name = fresh.name
-          token.firstName = fresh.firstName || undefined
-          token.lastName = fresh.lastName || undefined
-          token.companyName = fresh.companyName || undefined
-        }
+      if (trigger === "update") {
+        token.name = current.name
+        token.firstName = current.firstName || undefined
+        token.lastName = current.lastName || undefined
+        token.companyName = current.companyName || undefined
       }
       return token
     },

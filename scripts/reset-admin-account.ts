@@ -40,6 +40,7 @@ async function main() {
       firstName: 'Mark',
       lastName: 'Wead',
       password: hashedPassword,
+      passwordChangedAt: new Date(), // signs out existing sessions
       role: 'admin',
     }
   })

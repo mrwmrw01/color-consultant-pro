@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -87,6 +87,7 @@ export function EditProfileForm({ profile }: EditProfileFormProps) {
 }
 
 export function ChangePasswordForm() {
+  const router = useRouter()
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -114,13 +115,12 @@ export function ChangePasswordForm() {
       if (!response.ok) {
         throw new Error(data.error || "Failed to change password")
       }
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmPassword("")
-      toast.success("Password changed")
+      // The change signed out every session, this one included
+      toast.success("Password changed. Sign in with your new password.")
+      await signOut({ redirect: false })
+      router.replace("/auth/signin")
     } catch (error: any) {
       toast.error(error.message || "Failed to change password")
-    } finally {
       setIsSaving(false)
     }
   }

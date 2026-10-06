@@ -12,7 +12,8 @@ const passwordSchema = z.object({
 
 /**
  * POST /api/profile/password
- * Change the signed-in user's password (requires the current password)
+ * Change the signed-in user's password (requires the current password).
+ * Signs out every existing session, including the caller's.
  */
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -45,9 +46,10 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Setting passwordChangedAt signs out every session, this one included
   await prisma.user.update({
     where: { id: session.user.id },
-    data: { password: await bcrypt.hash(newPassword, 12) },
+    data: { password: await bcrypt.hash(newPassword, 12), passwordChangedAt: new Date() },
   })
 
   return NextResponse.json({ success: true })

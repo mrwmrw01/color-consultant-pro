@@ -81,7 +81,8 @@ export default async function ProfilePage() {
               Change Password
             </CardTitle>
             <CardDescription>
-              Use at least 8 characters. You stay signed in on this device.
+              Use at least 8 characters. Changing it signs you out everywhere, so you
+              sign in again with the new password.
             </CardDescription>
           </CardHeader>
           <CardContent>

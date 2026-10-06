@@ -31,6 +31,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string
     role: string
+    authTime?: number // when this session signed in (ms since epoch)
     firstName?: string
     lastName?: string
     companyName?: string

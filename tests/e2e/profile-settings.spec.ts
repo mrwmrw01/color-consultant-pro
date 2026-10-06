@@ -41,7 +41,7 @@ test.describe.serial('Profile & Settings', () => {
     expect(res.status()).toBe(400);
   });
 
-  test('should change password only with the correct current password', async ({ page, browser }) => {
+  test('should change password, sign out every session and accept the new one', async ({ page, browser }) => {
     const newPassword = `Changed-${Date.now()}`;
 
     const wrong = await page.request.post('/api/profile/password', {
@@ -50,27 +50,47 @@ test.describe.serial('Profile & Settings', () => {
     expect(wrong.status()).toBe(400);
     expect((await wrong.json()).error).toMatch(/current password is incorrect/i);
 
-    await page.goto('/dashboard/profile');
-    await page.getByLabel('Current password').fill(TEST_PASSWORD);
-    await page.getByLabel('New password', { exact: true }).fill(newPassword);
-    await page.getByLabel('Confirm new password').fill(newPassword);
-    await page.getByRole('button', { name: 'Change Password' }).click();
-    await expect(page.getByText('Password changed')).toBeVisible();
+    // Another device, signed in before the change
+    const otherDevice = await browser.newContext();
+    const otherLogin = new LoginPage(await otherDevice.newPage());
+    await otherLogin.navigateToLogin();
+    await otherLogin.loginWithTestUser();
+    await otherLogin.waitForLoginSuccess();
+    expect((await otherLogin.page.request.get('/api/clients')).ok()).toBeTruthy();
 
+    let changed = false;
     try {
-      // The new password signs in from a fresh browser session
-      const context = await browser.newContext();
-      const loginPage = new LoginPage(await context.newPage());
-      await loginPage.navigateToLogin();
-      await loginPage.login(TEST_EMAIL, newPassword);
-      await loginPage.waitForLoginSuccess();
-      await context.close();
+      await page.goto('/dashboard/profile');
+      await page.getByLabel('Current password').fill(TEST_PASSWORD);
+      await page.getByLabel('New password', { exact: true }).fill(newPassword);
+      await page.getByLabel('Confirm new password').fill(newPassword);
+      const response = page.waitForResponse(
+        (r) => r.url().includes('/api/profile/password') && r.request().method() === 'POST'
+      );
+      await page.getByRole('button', { name: 'Change Password' }).click();
+      changed = (await response).ok();
+      expect(changed).toBe(true);
+
+      // This browser is sent to sign in again, and the other device's session is revoked
+      await expect(page.getByText(/password changed/i)).toBeVisible();
+      await page.waitForURL(/\/auth\/signin/);
+      expect((await otherLogin.page.request.get('/api/clients')).status()).toBe(401);
     } finally {
-      // Restore so the rest of the suite can sign in
-      const restore = await page.request.post('/api/profile/password', {
-        data: { currentPassword: newPassword, newPassword: TEST_PASSWORD },
-      });
-      expect(restore.ok()).toBeTruthy();
+      if (changed) {
+        // The new password signs in from a fresh browser; restore the shared
+        // test password from there so the rest of the suite can sign in
+        const restoreContext = await browser.newContext();
+        const restoreLogin = new LoginPage(await restoreContext.newPage());
+        await restoreLogin.navigateToLogin();
+        await restoreLogin.login(TEST_EMAIL, newPassword);
+        await restoreLogin.waitForLoginSuccess();
+        const restore = await restoreLogin.page.request.post('/api/profile/password', {
+          data: { currentPassword: newPassword, newPassword: TEST_PASSWORD },
+        });
+        expect(restore.ok()).toBeTruthy();
+        await restoreContext.close();
+      }
+      await otherDevice.close();
     }
   });
 

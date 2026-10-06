@@ -129,7 +129,10 @@ not keep files between deploys, so use a Cloudflare R2 bucket (free up to
    NEXTAUTH_URL=https://paint.weadtech.net
    ALLOW_PUBLIC_SIGNUP=false
    ```
-   Keep the existing `DATABASE_URL` and `NEXTAUTH_SECRET`.
+   Keep the existing `DATABASE_URL`. Replace `NEXTAUTH_SECRET` with a new
+   random value (`openssl rand -base64 32`): that signs out every existing
+   session, including any opened with the admin password that was exposed in
+   this repository.
 
 ### 2. Upgrade through DeepAgent
 
@@ -196,7 +199,8 @@ curl -s https://paint.weadtech.net/api/health
 # {"status":"ok","checks":{"database":{"status":"ok"},"storage":{"status":"ok",…},"rateLimit":{"status":"ok",…}}}
 ```
 
-Then sign in, change the admin password (Profile), and walk through one job:
+Then sign in, change the admin password (Profile; this signs out every other
+session), and walk through one job:
 client → property → project → upload a photo → annotate a color → Edit Synopsis
 → Export DOCX.
 
