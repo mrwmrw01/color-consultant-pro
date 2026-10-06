@@ -68,18 +68,13 @@ export async function POST(request: NextRequest) {
     // Check rate limit
     rateLimitResult = await checkRateLimit(session.user.id, uploadLimiter)
     if (!rateLimitResult.allowed) {
-      const errorMessage = rateLimitResult.circuitOpen
-        ? "Upload service temporarily unavailable. Please try again in a few minutes."
-        : "Upload rate limit exceeded. Please try again later."
-      
       return NextResponse.json(
         {
-          error: errorMessage,
-          retryAfter: rateLimitResult.retryAfter,
-          circuitOpen: rateLimitResult.circuitOpen
+          error: "Upload rate limit exceeded. Please try again later.",
+          retryAfter: rateLimitResult.retryAfter
         },
         {
-          status: rateLimitResult.circuitOpen ? 503 : 429,
+          status: 429,
           headers: getRateLimitHeaders(rateLimitResult)
         }
       )
