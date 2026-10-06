@@ -3,6 +3,9 @@
 This is the current deployment guide. It replaces the AWS, EC2 and Abacus
 runbooks elsewhere in the repo.
 
+**Production today:** paint.weadtech.net on Abacus. To upgrade it, follow
+[Option C](#option-c---stay-on-abacus-current-host-of-paintweadtechnet).
+
 **Verified 2026-10-06:** the production image (`Dockerfile`) starts against an
 empty database, migrates and seeds itself, and passes the full end-to-end suite
 (64 tests) with no Redis and photos on a volume.
@@ -41,7 +44,7 @@ empty database, migrates and seeds itself, and passes the full end-to-end suite
 3. Next.js starts on `$PORT`. `/api/health` reports database, storage and
    rate-limiter status.
 
-## Option A - Render (recommended)
+## Option A - Render
 
 `render.yaml` describes the whole setup: the app, a 10 GB photo disk and a
 PostgreSQL 16 database. Render deploys again on every push to the connected
@@ -84,35 +87,97 @@ unprivileged `node` user; the entrypoint makes the volume writable for it.
 
 ## Option C - stay on Abacus (current host of paint.weadtech.net)
 
-Abacus does not deploy from GitHub, so the code has to be uploaded through its
-console (see `ABACUS_CONSOLE_CHEATSHEET.md`). Run `npm ci --legacy-peer-deps &&
-npm run build`, start with `npm start`, and set the environment variables
-above. The start script brings the existing Abacus database up to date,
-including the case where it was built with `prisma db push`.
+Abacus does not deploy from GitHub: the app lives in its DeepAgent workspace
+(apps.abacus.ai, see `ABACUS_CONSOLE_CHEATSHEET.md`). The upgrade runs there
+against the same database, so every existing client, property, project and
+annotation carries over.
 
-The Abacus filesystem may not survive redeploys, so store photos in an
-S3-compatible bucket rather than on disk:
+### 1. Photo storage
 
+Photos used to live in the deleted `colorguru-photos` S3 bucket, and Abacus may
+not keep files between deploys, so use a Cloudflare R2 bucket (free up to
+10 GB):
+
+1. <https://dash.cloudflare.com> → **R2** → **Create bucket**, for example
+   `color-consultant-photos`.
+2. The bucket's **Settings → CORS policy**:
+   ```json
+   [
+     {
+       "AllowedOrigins": ["https://paint.weadtech.net"],
+       "AllowedMethods": ["GET"],
+       "AllowedHeaders": ["*"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
+   ```
+   The annotator draws the photo onto a canvas to save the annotated copy,
+   which browsers only allow for CORS-enabled images.
+3. **R2 → Manage API tokens → Create API token**, permission **Object Read &
+   Write**, limited to that bucket. Note the access key ID, the secret access
+   key and the S3 endpoint `https://<account-id>.r2.cloudflarestorage.com`.
+4. In the Abacus app's **Settings → Environment / Secrets**, add:
+   ```
+   STORAGE_DRIVER=s3
+   AWS_BUCKET_NAME=color-consultant-photos
+   AWS_ACCESS_KEY_ID=<access key id>
+   AWS_SECRET_ACCESS_KEY=<secret access key>
+   AWS_REGION=auto
+   S3_ENDPOINT_URL=https://<account-id>.r2.cloudflarestorage.com
+   NEXTAUTH_URL=https://paint.weadtech.net
+   ALLOW_PUBLIC_SIGNUP=false
+   ```
+   Keep the existing `DATABASE_URL` and `NEXTAUTH_SECRET`.
+
+### 2. Upgrade through DeepAgent
+
+Merge the pull request into `main`, open the Color Consultant Pro app in
+DeepAgent and send it this message:
+
+```text
+Update this app to the latest code from
+https://github.com/mrwmrw01/color-consultant-pro (branch main) and redeploy it
+to paint.weadtech.net. Keep the existing database and all of its data: never
+reset it, never run `prisma migrate reset` or `prisma db push --accept-data-loss`.
+
+1. Back up the database first:
+   pg_dump "$DATABASE_URL" -Fc -f color_consultant_backup_<today>.dump
+   and give me the file to download.
+2. Replace the app's code with the repository's main branch. Keep the existing
+   environment variables and secrets, including the new storage settings.
+3. Install dependencies: npm ci --legacy-peer-deps
+4. Bring the database schema up to date: node scripts/db-migrate.mjs
+   It applies pending migrations without deleting data. If it reports that the
+   schema sync was refused, stop and show me its full output.
+5. Add any missing paint colors and rooms: npm run db:seed
+   (it does not change existing records).
+6. Build with npm run build and deploy to the custom domain paint.weadtech.net.
+   If the deployment has a start command, use npm start (it repeats steps 4
+   and 5 on every start).
+   If Prisma reports a missing query engine for the deployment platform, add
+   the target named in the error to binaryTargets in prisma/schema.prisma and
+   build again.
+7. Open https://paint.weadtech.net/api/health and show me the output. It
+   should report "status":"ok".
 ```
-STORAGE_DRIVER=s3
-AWS_BUCKET_NAME=<bucket>
-AWS_ACCESS_KEY_ID=<key id>
-AWS_SECRET_ACCESS_KEY=<secret>
-AWS_REGION=auto
-S3_ENDPOINT_URL=https://<account-id>.r2.cloudflarestorage.com   # Cloudflare R2
-```
 
-Allow GET requests from the site's domain in the bucket's CORS settings: the
-annotator draws the photo onto a canvas to save the annotated copy, which
-browsers only allow for CORS-enabled images.
+### 3. After the upgrade
 
-## Moving data from the current site
+- Old photos still point at the deleted S3 bucket and show as broken images.
+  Their annotations (colors, rooms, products, sheens) are intact and still feed
+  the synopsis. Re-upload the recovered photos to their projects with
+  **Upload Photos**. Do not delete the old photo records: deleting a photo
+  deletes its annotations.
+- Rollback: redeploy the previous version from Abacus. The backup from step 1
+  restores with `pg_restore` if it is ever needed.
 
-The current paint.weadtech.net database still holds the clients, properties
-and projects. (Photos were lost with the old S3 bucket; recovered copies are
-kept outside the repo.)
+## Moving the data to a new host (options A and B)
 
-1. Export through the old site's API with your login:
+Staying on Abacus needs none of this. To move to Render or another host, the
+existing clients, properties and projects come across through the old site's
+API:
+
+1. Export with your login:
    `PROD_EMAIL=… PROD_PASSWORD=… OUT_DIR=./prod-export npx tsx scripts/export-prod-data.ts`
 2. Load it into the new database:
    `DATABASE_URL=<new database> INGEST_USER_EMAIL=<your login> npx tsx scripts/ingest-prod-export.ts ./prod-export/<folder>`
@@ -135,6 +200,7 @@ client → property → project → upload a photo → annotate a color → Edit
 
 ## Rollback
 
+- Abacus: redeploy the previous version from the app's deployments.
 - Render: **Events → Rollback** to the previous deploy.
 - Docker: run the previous image tag.
 - No database rollback is needed: the migrations bring the database to the
