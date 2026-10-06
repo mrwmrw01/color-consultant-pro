@@ -2,18 +2,20 @@
 /**
  * Bring the database schema up to date before the app starts (`npm start`).
  *
- *   - Normal case: `prisma migrate deploy`.
- *   - Database built with `prisma db push` (tables but no migration history,
- *     Prisma error P3005): sync it with a non-destructive `db push` (refuses
- *     anything that would lose data), then record every migration as applied
- *     so future deploys use `migrate deploy`.
- *   - A deploy of a build that predates 20260203000000_reconcile_schema_drift
- *     onto an empty database leaves 20260204000000_add_performance_indexes
- *     marked failed (P3009). That migration is only CREATE INDEX IF NOT EXISTS,
- *     so it is marked rolled back and retried after the reconcile migration.
+ * Normally this is just `prisma migrate deploy`. Databases that were partly
+ * managed with `prisma db push` need more care, so it also handles:
  *
- * Exits non-zero (so the app does not start against a mismatched schema) when
- * the database cannot be brought up to date.
+ *   - P3005, tables but no migration history: sync the schema with a
+ *     non-destructive `db push`, then record every migration as applied.
+ *   - P3018, a migration failed because its tables, columns or constraints
+ *     already exist (created by `db push`): record it as applied and
+ *     reconcile with `db push` at the end.
+ *   - P3009, an earlier failed migration blocks the rest: mark it rolled back
+ *     and try it again; it then either applies or hits the case above.
+ *
+ * `db push` runs without --accept-data-loss, so it refuses anything that would
+ * drop data. Exits non-zero (the app does not start against a mismatched
+ * schema) when the database cannot be brought up to date safely.
  */
 import { spawnSync } from "node:child_process"
 import { existsSync, readdirSync, statSync } from "node:fs"
@@ -22,7 +24,9 @@ import path from "node:path"
 const root = process.cwd()
 const migrationsDir = path.join(root, "prisma", "migrations")
 const localPrisma = path.join(root, "node_modules", ".bin", "prisma")
-const RETRYABLE_FAILED_MIGRATION = "20260204000000_add_performance_indexes"
+// Postgres: duplicate_table / duplicate_column / duplicate_object
+const ALREADY_EXISTS = new Set(["42P07", "42701", "42710"])
+const MAX_ATTEMPTS = 20
 
 function prisma(args) {
   const [cmd, cmdArgs] = existsSync(localPrisma)
@@ -49,40 +53,59 @@ function migrationNames() {
     .sort()
 }
 
-function deploy() {
-  return prisma(["migrate", "deploy"])
+function resolveMigration(flag, name) {
+  const resolved = prisma(["migrate", "resolve", flag, name])
+  if (!resolved.ok) fail(`Could not mark ${name} ${flag.replace("--", "")}`, resolved.output)
 }
 
-let result = deploy()
-
-if (!result.ok && result.output.includes("P3005")) {
-  log("Database has tables but no migration history (created with `prisma db push`). Baselining.")
+function pushSchema() {
   const push = prisma(["db", "push", "--skip-generate"])
   if (!push.ok) {
     fail("Schema sync refused (it would lose data or failed). Resolve manually before deploying.", push.output)
   }
-  for (const name of migrationNames()) {
-    const resolved = prisma(["migrate", "resolve", "--applied", name])
-    if (!resolved.ok) fail(`Could not mark ${name} as applied`, resolved.output)
+}
+
+let reconcile = false
+const retried = new Set()
+let result
+
+for (let attempt = 0; ; attempt++) {
+  if (attempt >= MAX_ATTEMPTS) fail("Gave up after too many migration attempts.", result?.output)
+  result = prisma(["migrate", "deploy"])
+  if (result.ok) break
+  const output = result.output
+
+  if (output.includes("P3005")) {
+    log("Database has tables but no migration history (created with `prisma db push`). Baselining.")
+    pushSchema()
+    for (const name of migrationNames()) resolveMigration("--applied", name)
+    log(`Baselined ${migrationNames().length} migrations.`)
+    continue
   }
-  log(`Baselined ${migrationNames().length} migrations.`)
-  result = deploy()
-}
 
-if (
-  !result.ok &&
-  result.output.includes("P3009") &&
-  result.output.includes(RETRYABLE_FAILED_MIGRATION)
-) {
-  log(`Retrying ${RETRYABLE_FAILED_MIGRATION} after the schema reconcile migration.`)
-  const rolledBack = prisma(["migrate", "resolve", "--rolled-back", RETRYABLE_FAILED_MIGRATION])
-  if (!rolledBack.ok) fail(`Could not reset ${RETRYABLE_FAILED_MIGRATION}`, rolledBack.output)
-  result = deploy()
-}
+  const failedName = output.match(/Migration name: (\S+)/)?.[1]
+  const errorCode = output.match(/Database error code: (\S+)/)?.[1]
+  if (output.includes("P3018") && failedName && ALREADY_EXISTS.has(errorCode)) {
+    log(`${failedName}: its objects already exist (created with \`prisma db push\`); recording it as applied.`)
+    resolveMigration("--applied", failedName)
+    reconcile = true
+    continue
+  }
 
-if (!result.ok) {
-  fail("Migration failed.", result.output)
+  const blockedBy = output.match(/The `([^`]+)` migration started at/)?.[1]
+  if (output.includes("P3009") && blockedBy && !retried.has(blockedBy)) {
+    log(`${blockedBy} failed in an earlier deploy; retrying it.`)
+    retried.add(blockedBy)
+    resolveMigration("--rolled-back", blockedBy)
+    continue
+  }
+
+  fail("Migration failed.", output)
 }
 
 console.log(result.output.trim())
+if (reconcile) {
+  log("Reconciling objects created outside migrations with the schema.")
+  pushSchema()
+}
 log("Database schema is up to date.")
