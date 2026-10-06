@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "prisma migrate deploy && next start",
+    "start": "node scripts/db-migrate.mjs && (npm run --silent db:seed || echo '[seed] failed; starting anyway') && next start",
     "postinstall": "prisma generate",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
@@ -38,12 +38,10 @@
     "eslint-plugin-prettier": "5.1.3",
     "eslint-plugin-react-hooks": "4.6.0",
     "postcss": "8.4.30",
-    "prisma": "6.7.0",
     "tailwind-merge": "2.5.2",
     "tailwindcss": "3.3.3",
     "tailwindcss-animate": "1.0.7",
     "ts-node": "10.9.2",
-    "tsx": "4.20.3",
     "typescript": "5.2.2"
   },
   "dependencies": {
@@ -124,6 +122,7 @@
     "next-auth": "4.24.14",
     "next-themes": "0.3.0",
     "plotly.js": "2.35.3",
+    "prisma": "6.7.0",
     "puppeteer-core": "^24.23.0",
     "rate-limiter-flexible": "^9.0.1",
     "react": "18.2.0",
@@ -144,6 +143,7 @@
     "sonner": "1.5.0",
     "swr": "2.2.4",
     "tailwind-scrollbar-hide": "1.1.7",
+    "tsx": "4.20.3",
     "vaul": "0.9.9",
     "webpack": "5.99.5",
     "xlsx": "^0.18.5",

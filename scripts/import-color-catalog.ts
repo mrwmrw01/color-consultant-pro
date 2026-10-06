@@ -11,82 +11,17 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import * as XLSX from 'xlsx';
-import * as path from 'path';
+import { COLOR_CATALOG_PATH, CatalogEntry, readColorCatalog } from './lib/reference-data';
 
 const prisma = new PrismaClient();
 
-const XLSX_PATH = path.join(__dirname, '..', 'data', 'Color Uploads.xlsx');
-
-interface CatalogEntry {
-  manufacturer: string;
-  colorCode: string;
-  name: string;
-  hexColor: string;
-  rgbColor: string;
-}
-
-function normalizeSWCode(raw: string): string {
-  // "SW0001" -> "SW 0001"
-  const s = String(raw).trim();
-  const match = s.match(/^SW\s*(\d+)$/i);
-  if (match) return `SW ${match[1]}`;
-  return s;
-}
-
-function normalizeBMCode(raw: string): string {
-  return String(raw).trim();
-}
-
-function parseSheet(ws: XLSX.WorkSheet, manufacturer: string): CatalogEntry[] {
-  const rows = XLSX.utils.sheet_to_json<any>(ws, { header: 1 });
-  if (rows.length < 2) return [];
-
-  const header = rows[0].map((h: string) => String(h).trim());
-  const idxName = header.findIndex((h: string) => /color name/i.test(h));
-  const idxCode = header.findIndex((h: string) => /color number/i.test(h));
-  const idxHex = header.findIndex((h: string) => /^hex$/i.test(h));
-  const idxR = header.findIndex((h: string) => /red value/i.test(h));
-  const idxG = header.findIndex((h: string) => /green value/i.test(h));
-  const idxB = header.findIndex((h: string) => /blue value/i.test(h));
-
-  const entries: CatalogEntry[] = [];
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (!row || !row[idxCode] || !row[idxName]) continue;
-
-    const rawCode = String(row[idxCode]);
-    const name = String(row[idxName]).trim();
-    const hex = row[idxHex] ? `#${String(row[idxHex]).replace(/^#/, '').toUpperCase()}` : '';
-    const r = row[idxR];
-    const g = row[idxG];
-    const b = row[idxB];
-    const rgb = r != null && g != null && b != null ? `${r},${g},${b}` : '';
-
-    const code =
-      manufacturer === 'Sherwin Williams' ? normalizeSWCode(rawCode) : normalizeBMCode(rawCode);
-
-    entries.push({ manufacturer, colorCode: code, name, hexColor: hex, rgbColor: rgb });
-  }
-  return entries;
-}
-
 async function main() {
-  console.log(`📖 Reading: ${XLSX_PATH}`);
-  const wb = XLSX.readFile(XLSX_PATH);
-  console.log(`   Tabs: ${wb.SheetNames.join(', ')}`);
+  console.log(`📖 Reading: ${COLOR_CATALOG_PATH}`);
+  const allEntries = readColorCatalog();
+  const swCount = allEntries.filter((e) => e.manufacturer === 'Sherwin Williams').length;
 
-  const swEntries = wb.SheetNames.includes('SW')
-    ? parseSheet(wb.Sheets['SW'], 'Sherwin Williams')
-    : [];
-  const bmEntries = wb.SheetNames.includes('BM')
-    ? parseSheet(wb.Sheets['BM'], 'Benjamin Moore')
-    : [];
-
-  console.log(`   SW catalog entries: ${swEntries.length}`);
-  console.log(`   BM catalog entries: ${bmEntries.length}`);
-
-  const allEntries = [...swEntries, ...bmEntries];
+  console.log(`   SW catalog entries: ${swCount}`);
+  console.log(`   BM catalog entries: ${allEntries.length - swCount}`);
 
   // Build a lookup by (manufacturer, colorCode)
   const catalogMap = new Map<string, CatalogEntry>();

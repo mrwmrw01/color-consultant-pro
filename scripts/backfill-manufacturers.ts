@@ -6,60 +6,16 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { MANUFACTURERS } from './lib/reference-data';
 
 const prisma = new PrismaClient();
-
-// Seed the known manufacturers with codePattern hints
-const SEED: Array<{ name: string; abbreviation: string; website?: string; codePattern?: string; notes?: string }> = [
-  {
-    name: 'Sherwin Williams',
-    abbreviation: 'SW',
-    website: 'https://www.sherwin-williams.com',
-    codePattern: '^SW\\s*\\d{1,5}$',
-    notes: 'Codes formatted "SW 0001" (with space).',
-  },
-  {
-    name: 'Benjamin Moore',
-    abbreviation: 'BM',
-    website: 'https://www.benjaminmoore.com',
-    codePattern: '^(AF|HC|CC|CSP|OC|PM)-\\d{1,4}$|^\\d{4}-\\d{2}$|^\\d{2,4}$',
-    notes: 'Mixed code formats: AF-5, HC-154, 2041-10, 100.',
-  },
-  {
-    name: 'Farrow & Ball',
-    abbreviation: 'FB',
-    website: 'https://www.farrow-ball.com',
-    codePattern: '^\\d{1,3}$|^No\\.\\s*\\d{1,3}$',
-    notes: 'Traditional British paint brand. Codes like "No. 200".',
-  },
-  {
-    name: 'PPG Paints',
-    abbreviation: 'PPG',
-    website: 'https://www.ppgpaints.com',
-  },
-  {
-    name: 'Behr',
-    abbreviation: 'BH',
-    website: 'https://www.behr.com',
-  },
-  {
-    name: 'Dunn-Edwards',
-    abbreviation: 'DE',
-    website: 'https://www.dunnedwards.com',
-  },
-  {
-    name: 'Valspar',
-    abbreviation: 'VS',
-    website: 'https://www.valspar.com',
-  },
-];
 
 async function main() {
   console.log('🏭 Backfilling Manufacturer entity...\n');
 
   // Step 1: Upsert the known brands
   const byName = new Map<string, { id: string }>();
-  for (const m of SEED) {
+  for (const m of MANUFACTURERS) {
     const rec = await prisma.manufacturer.upsert({
       where: { name: m.name },
       update: {
