@@ -46,13 +46,23 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: /profile-settings\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      // Changes the shared test user's profile and password, so it runs
+      // after every other test has finished signing in
+      name: 'account',
+      testMatch: /profile-settings\.spec\.ts/,
+      dependencies: ['chromium'],
       use: { ...devices['Desktop Chrome'] },
     },
   ],
 
   // Run your local dev server before starting the tests
+  // (CI runs the production build instead: E2E_SERVER_COMMAND="npm start")
   webServer: {
-    command: 'PORT=3001 npm run dev',
+    command: process.env.E2E_SERVER_COMMAND || 'PORT=3001 npm run dev',
     url: 'http://localhost:3001',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,

@@ -1,5 +1,7 @@
 # AWS Deployment Guide - Color Consultant Pro
 
+> **Superseded (2026-10-06):** see [DEPLOY.md](./DEPLOY.md) for current deployment instructions. This document describes an earlier setup and is kept for reference.
+
 Deploy to custom subdomain (e.g., `color-consultant.yourdomain.com`)
 
 ---

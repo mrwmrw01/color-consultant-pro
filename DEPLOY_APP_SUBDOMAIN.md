@@ -1,5 +1,7 @@
 # Deploy to app.colorgurudesign.com - Subdomain Setup
 
+> **Superseded (2026-10-06):** see [DEPLOY.md](./DEPLOY.md) for current deployment instructions. This document describes an earlier setup and is kept for reference.
+
 Deploy Color Consultant Pro to **app.colorgurudesign.com** while keeping your existing Wix site at **colorgurudesign.com**.
 
 ---

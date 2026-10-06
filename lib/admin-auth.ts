@@ -28,7 +28,8 @@ export async function requireAdmin(): Promise<
       response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     }
   }
-  const role = (session.user as any).role ?? "user"
+  // Older admin accounts were saved as "ADMIN"
+  const role = String((session.user as any).role ?? "user").toLowerCase()
   const allowed = ["admin", "consultant"]
   if (!allowed.includes(role)) {
     return {

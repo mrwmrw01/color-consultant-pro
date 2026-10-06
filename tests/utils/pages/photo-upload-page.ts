@@ -115,6 +115,21 @@ export class PhotoUploadPage extends BasePage {
     await this.page.waitForTimeout(1000);
   }
 
+  /**
+   * Select files, click Upload and wait until the server has stored them
+   */
+  async uploadAndWait(filePath: string | string[]) {
+    await this.uploadFiles(Array.isArray(filePath) ? filePath : [filePath]);
+    const responsePromise = this.page.waitForResponse(
+      (r) => r.url().includes('/api/photos/upload') && r.request().method() === 'POST'
+    );
+    await this.clickUpload();
+    const response = await responsePromise;
+    if (!response.ok()) {
+      throw new Error(`Photo upload failed: ${response.status()} ${await response.text()}`);
+    }
+  }
+
   async uploadSingleFile(filePath: string) {
     await this.uploadFiles([filePath]);
   }

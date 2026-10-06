@@ -1,5 +1,7 @@
 # Quick Start - AWS EC2 Deployment
 
+> **Superseded (2026-10-06):** see [DEPLOY.md](./DEPLOY.md) for current deployment instructions. This document describes an earlier setup and is kept for reference.
+
 The fastest way to deploy Color Consultant Pro to AWS with a custom subdomain.
 
 ---

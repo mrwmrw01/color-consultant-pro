@@ -45,6 +45,8 @@ model User {
   lastName      String?
   companyName   String?
   password      String?
+  // Sessions signed in before this are revoked (see lib/auth.ts)
+  passwordChangedAt DateTime?
   role          String    @default("consultant")
 
   // Subscription tier for AI budget management

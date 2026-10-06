@@ -1,35 +1,12 @@
 import { PrismaClient } from '@prisma/client'
-import { ROOM_HIERARCHY } from '../lib/types'
+import { buildGlobalRooms } from './lib/reference-data'
 
 const prisma = new PrismaClient()
 
 async function main() {
   console.log('Seeding global rooms from ROOM_HIERARCHY...')
 
-  const rooms: { name: string; roomType: string; subType: string }[] = []
-
-  for (const [roomType, config] of Object.entries(ROOM_HIERARCHY)) {
-    for (const subtype of config.subtypes) {
-      // Build the display name the same way the dropdowns do
-      let name: string
-      if (roomType === 'Custom') {
-        // Skip the "Enter Custom Name" placeholder
-        continue
-      } else if (subtype === 'Other') {
-        name = roomType
-      } else if (subtype === 'Custom Defined') {
-        name = `${roomType} - ${subtype}`
-      } else {
-        name = `${roomType} - ${subtype}`
-      }
-
-      rooms.push({
-        name,
-        roomType,
-        subType: subtype,
-      })
-    }
-  }
+  const rooms = buildGlobalRooms()
 
   let created = 0
   let skipped = 0

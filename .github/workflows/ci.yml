@@ -1,148 +1,77 @@
-name: Color Consultant Pro CI
+name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main]
 
 jobs:
-  test:
-    runs-on: self-hosted
-
-    strategy:
-      matrix:
-        node-version: [20.x]
-
+  build:
+    name: Type-check and build
+    runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
 
-    - name: Display system info
-      run: |
-        echo "=== Node & NPM Versions ==="
-        node --version
-        npm --version
-        echo "=== CPU Info ==="
-        nproc
-        echo "=== Memory ==="
-        free -h
-        echo "=== Disk Space ==="
-        df -h | grep nvme
+      - run: npm ci --legacy-peer-deps --no-audit --no-fund
+      - run: npm run type-check
+      - run: npm run build
 
-    - name: Install dependencies
-      env:
-        NPM_CONFIG_JOBS: 16
-        NODE_OPTIONS: --max-old-space-size=8192
-      run: |
-        npm ci --prefer-offline --no-audit
-
-    - name: Run linting
-      run: |
-        npm run lint || echo "Linting completed with warnings"
-
-    - name: Run type checking
-      run: |
-        npm run type-check || npx tsc --noEmit || echo "TypeScript check completed"
-
-    - name: Run tests
-      env:
-        NODE_ENV: test
-        NODE_OPTIONS: --max-old-space-size=8192
-      run: |
-        npm test || echo "Tests completed"
-
-    - name: Build application
-      env:
-        NODE_ENV: production
-        NODE_OPTIONS: --max-old-space-size=8192
-      run: |
-        npm run build
-
-    - name: Check bundle size
-      run: |
-        echo "=== Build Output Size ==="
-        du -sh .next/ 2>/dev/null || du -sh dist/ 2>/dev/null || du -sh build/ 2>/dev/null || echo "No build directory found"
-        echo "=== Largest Files ==="
-        find .next/ dist/ build/ -type f -exec ls -lh {} \; 2>/dev/null | sort -k5 -hr | head -20 || echo "Build analysis skipped"
-
-    - name: Security audit
-      continue-on-error: true
-      run: |
-        npm audit --production || echo "Security audit completed with warnings"
-
-    - name: Build statistics
-      if: always()
-      run: |
-        echo "=== Node Modules Size ==="
-        du -sh node_modules/ 2>/dev/null || echo "No node_modules found"
-        echo "=== Package Count ==="
-        ls node_modules/ | wc -l
-        echo "=== NPM Cache Info ==="
-        npm config get cache
-
-  lighthouse:
-    runs-on: self-hosted
-    needs: test
-    if: github.event_name == 'pull_request'
-
+  e2e:
+    name: End-to-end tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: color_consultant_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/color_consultant_test
+      NEXTAUTH_SECRET: ci-only-secret
+      NEXTAUTH_URL: http://localhost:3001
+      STORAGE_DRIVER: local
+      PORT: 3001
+      # The suite uploads far more photos than a person would
+      RATE_LIMIT_UPLOAD: 10000
+      # `npm start` migrates and seeds the empty database and creates the
+      # login the tests sign in with
+      ADMIN_EMAIL: test@colorguru.com
+      ADMIN_PASSWORD: "TestPassword123!"
+      ADMIN_NAME: Test User
+      E2E_SERVER_COMMAND: npm start
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Use Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.x'
-        cache: 'npm'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
 
-    - name: Install dependencies
-      run: npm ci --prefer-offline --no-audit
+      - run: npm ci --legacy-peer-deps --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npx playwright test
 
-    - name: Build for production
-      env:
-        NODE_ENV: production
-        NODE_OPTIONS: --max-old-space-size=8192
-      run: npm run build
-
-    - name: Performance analysis
-      run: |
-        echo "=== Build Performance Metrics ==="
-        echo "Build completed successfully"
-        echo "Next.js build analysis available in build output above"
-
-  deploy-staging:
-    runs-on: self-hosted
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Deploy to staging
-      run: |
-        echo "Staging deployment triggered"
-        # Add your staging deployment commands here
-        # e.g., npm run deploy:staging
-
-  deploy-production:
-    runs-on: self-hosted
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Deploy to production
-      run: |
-        echo "Production deployment triggered"
-        # Add your production deployment commands here
-        # e.g., npm run deploy:production
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

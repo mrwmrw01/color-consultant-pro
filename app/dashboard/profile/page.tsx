@@ -1,17 +1,29 @@
 
 import { getServerSession } from "next-auth/next"
+import { redirect } from "next/navigation"
 import { authOptions } from "@/lib/auth"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { User, Mail, Building, UserCheck } from "lucide-react"
+import { prisma } from "@/lib/db"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ChangePasswordForm, EditProfileForm } from "@/components/profile/profile-forms"
+import { User, Mail, KeyRound, UserCheck } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
 export default async function ProfilePage() {
   const session = await getServerSession(authOptions)
-  
-  if (!session?.user) {
-    return <div>Unauthorized</div>
+
+  if (!session?.user?.id) {
+    redirect("/auth/signin")
+  }
+
+  // Read from the database so edits show without signing in again
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { email: true, firstName: true, lastName: true, companyName: true, role: true },
+  })
+
+  if (!user) {
+    redirect("/auth/signin")
   }
 
   return (
@@ -20,7 +32,7 @@ export default async function ProfilePage() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
         <p className="text-gray-600 mt-1">
-          Manage your account information and preferences
+          Manage your account information and password
         </p>
       </div>
 
@@ -33,66 +45,48 @@ export default async function ProfilePage() {
               Profile Information
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Full Name</label>
-              <p className="text-gray-900">
-                {session.user.firstName} {session.user.lastName} || session.user.name || 'Not provided'
-              </p>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium text-gray-700">Email</label>
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-gray-400" />
-                <p className="text-gray-900">{session.user.email}</p>
-              </div>
-            </div>
-            
-            {session.user.companyName && (
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-700">Company</label>
+                <label className="text-sm font-medium text-gray-700">Email</label>
                 <div className="flex items-center gap-2">
-                  <Building className="h-4 w-4 text-gray-400" />
-                  <p className="text-gray-900">{session.user.companyName}</p>
+                  <Mail className="h-4 w-4 text-gray-400" />
+                  <p className="text-gray-900 break-all">{user.email}</p>
                 </div>
               </div>
-            )}
-            
-            <div>
-              <label className="text-sm font-medium text-gray-700">Role</label>
-              <div className="flex items-center gap-2">
-                <UserCheck className="h-4 w-4 text-gray-400" />
-                <p className="text-gray-900 capitalize">{session.user.role || 'consultant'}</p>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Role</label>
+                <div className="flex items-center gap-2">
+                  <UserCheck className="h-4 w-4 text-gray-400" />
+                  <p className="text-gray-900 capitalize">{user.role.toLowerCase()}</p>
+                </div>
               </div>
             </div>
-            
-            <Button variant="outline" className="w-full">
-              Edit Profile (Coming Soon)
-            </Button>
+
+            <EditProfileForm
+              profile={{
+                firstName: user.firstName || "",
+                lastName: user.lastName || "",
+                companyName: user.companyName || "",
+              }}
+            />
           </CardContent>
         </Card>
 
-        {/* Account Settings */}
+        {/* Password */}
         <Card>
           <CardHeader>
-            <CardTitle>Account Settings</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5" />
+              Change Password
+            </CardTitle>
+            <CardDescription>
+              Use at least 8 characters. Changing it signs you out everywhere, so you
+              sign in again with the new password.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-gray-600">
-              Additional account management features will be available soon.
-            </p>
-            <div className="space-y-2">
-              <Button variant="outline" className="w-full" disabled>
-                Change Password
-              </Button>
-              <Button variant="outline" className="w-full" disabled>
-                Notification Preferences
-              </Button>
-              <Button variant="outline" className="w-full" disabled>
-                Data Export
-              </Button>
-            </div>
+          <CardContent>
+            <ChangePasswordForm />
           </CardContent>
         </Card>
       </div>

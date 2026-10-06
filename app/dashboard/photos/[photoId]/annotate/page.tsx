@@ -38,7 +38,7 @@ export default async function AnnotatePhotoPage({ params }: PageProps) {
   })
 
   if (!photo) {
-    redirect("/dashboard/photos")
+    redirect("/dashboard/projects")
   }
 
   // Get all photos from the same project for navigation

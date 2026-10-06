@@ -549,8 +549,9 @@ export function PhotoAnnotator({
   useEffect(() => {
     const fetchImageUrl = async () => {
       try {
-        // Request large size (2048x2048 optimized) for annotation
-        const response = await fetch(`/api/photos/${photo.id}/url?size=large`)
+        // Request large size (2048x2048 optimized) for annotation. Always the
+        // original: the saved annotated copy already has the marks drawn in.
+        const response = await fetch(`/api/photos/${photo.id}/url?size=large&original=true`)
         if (response.ok) {
           const data = await response.json()
           setImageUrl(data.url)
@@ -926,9 +927,9 @@ export function PhotoAnnotator({
 
       // Create form data and upload
       const formData = new FormData()
-      formData.append('image', blob, `annotated-${photo.originalFilename}`)
+      formData.append('file', blob, `annotated-${photo.originalFilename}`)
 
-      const response = await fetch(`/api/photos/${photo.id}/annotated`, {
+      const response = await fetch(`/api/photos/${photo.id}/save-annotated`, {
         method: 'POST',
         body: formData
       })
@@ -1914,7 +1915,7 @@ export function PhotoAnnotator({
                   setEditForm(prev => ({ ...prev, colorId: value, productLine: '', sheen: '' }))
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger id="editColor">
                   <SelectValue placeholder="Select color..." />
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
@@ -1953,7 +1954,7 @@ export function PhotoAnnotator({
                 value={editForm.productLine || "none"}
                 onValueChange={(value) => setEditForm(prev => ({ ...prev, productLine: value === "none" ? "" : value }))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="editProductLine">
                   <SelectValue placeholder="Select product line..." />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
@@ -1997,7 +1998,7 @@ export function PhotoAnnotator({
                 value={editForm.sheen || "none"} 
                 onValueChange={(value) => setEditForm(prev => ({ ...prev, sheen: value === "none" ? "" : value }))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="editSheen">
                   <SelectValue placeholder="Select sheen..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -2017,7 +2018,7 @@ export function PhotoAnnotator({
                 value={editForm.surfaceType} 
                 onValueChange={(value) => setEditForm(prev => ({ ...prev, surfaceType: value }))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="editSurface">
                   <SelectValue placeholder="Select surface..." />
                 </SelectTrigger>
                 <SelectContent>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getAWSConfigStatus, validateS3Connection } from "@/lib/aws-config"
-import { getCircuitBreakerStatus } from "@/lib/rate-limiter"
+import { getRateLimiterStatus } from "@/lib/rate-limiter"
 import { prisma } from "@/lib/db"
 import { getStorageDriverName, getLocalUploadsDir } from "@/lib/storage"
 import { promises as fs } from "fs"
@@ -11,11 +11,11 @@ export async function GET() {
   const checks: {
     database: { status: string; error?: string }
     storage: { status: string; error?: string; bucket?: string | null; driver?: string }
-    redis: { status: string; circuitOpen: boolean }
+    rateLimit: { status: string; store: string; redisStatus?: string }
   } = {
     database: { status: "unknown" },
     storage: { status: "unknown", driver: getStorageDriverName() },
-    redis: { status: "unknown", circuitOpen: false }
+    rateLimit: { status: "unknown", store: "memory" }
   }
   
   // Check database
@@ -55,10 +55,13 @@ export async function GET() {
     }
   }
   
-  // Check Redis circuit breaker
-  const circuitStatus = getCircuitBreakerStatus()
-  checks.redis.status = circuitStatus.isOpen ? "degraded" : "ok"
-  checks.redis.circuitOpen = circuitStatus.isOpen
+  // Rate limiter store: in-memory, or Redis (degraded = Redis configured but
+  // not connected; in-memory limits are covering for it)
+  const limiterStatus = getRateLimiterStatus()
+  checks.rateLimit = {
+    status: limiterStatus.store === "memory" || limiterStatus.redisStatus === "ready" ? "ok" : "degraded",
+    ...limiterStatus,
+  }
   
   // Determine overall status
   const allOk = Object.values(checks).every(c => c.status === "ok")

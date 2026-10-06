@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { loginAsTestUser, waitForToast } from '../utils/test-helpers';
+import { readFile } from 'fs/promises';
+import JSZip from 'jszip';
+import { loginAsTestUser, waitForToast, getTestImagePath } from '../utils/test-helpers';
 import {
   createTestProjectWithHierarchy,
   cleanupTestHierarchy,
@@ -186,6 +188,74 @@ test.describe('Synopsis Draft Editor', () => {
 
       // Verify the toast notification
       await toastPromise;
+    } finally {
+      await cleanupTestHierarchy(page, hierarchy);
+    }
+  });
+
+  test('should export the tagged color and an embedded JPEG photo', async ({ page }) => {
+    const projectName = `Synopsis Content Test ${Date.now()}`;
+    const hierarchy = await createTestProjectWithHierarchy(page, projectName);
+
+    try {
+      const rooms = await (await page.request.get('/api/rooms')).json();
+      const room = rooms.find((r: any) => r.name === 'Living Areas - Living Room');
+      expect(room).toBeTruthy();
+
+      const upload = await page.request.post('/api/photos/upload', {
+        multipart: {
+          projectId: hierarchy.project.id,
+          roomId: room.id,
+          files: {
+            name: 'living-room.jpg',
+            mimeType: 'image/jpeg',
+            buffer: await readFile(getTestImagePath('medium-photo.jpg')),
+          },
+        },
+      });
+      expect(upload.ok()).toBeTruthy();
+      const [photo] = (await upload.json()).photos;
+
+      const search = await page.request.get('/api/colors?search=SW%207005');
+      const color = (await search.json()).colors.find((c: any) => c.colorCode === 'SW 7005');
+      expect(color).toBeTruthy();
+
+      const annotation = await page.request.post(`/api/photos/${photo.id}/annotations`, {
+        data: {
+          type: 'color_tag',
+          data: { x: 120, y: 80 },
+          colorId: color.id,
+          surfaceType: 'Wall',
+          productLine: 'Duration Interior',
+          sheen: 'Matte',
+        },
+      });
+      expect(annotation.ok()).toBeTruthy();
+
+      // First load seeds the draft from the annotations
+      const draft = await page.request.get(`/api/projects/${hierarchy.project.id}/synopsis-draft`);
+      expect(draft.ok()).toBeTruthy();
+
+      const exported = await page.request.get(
+        `/api/projects/${hierarchy.project.id}/synopsis-draft/export`
+      );
+      expect(exported.ok()).toBeTruthy();
+      expect(exported.headers()['content-type']).toContain('wordprocessingml');
+
+      const docx = await JSZip.loadAsync(await exported.body());
+      const documentXml = await docx.file('word/document.xml')!.async('string');
+      expect(documentXml).toContain(hierarchy.client.name);
+      expect(documentXml).toContain('Pure White');
+      expect(documentXml).toContain('Living Areas - Living Room');
+      expect(documentXml).toContain('Duration Interior');
+
+      // The photo is embedded as a real JPEG (uploads are stored as WebP)
+      const media = Object.keys(docx.files).filter(
+        (name) => name.startsWith('word/media/') && !docx.files[name].dir
+      );
+      expect(media.length).toBe(1);
+      const image = await docx.file(media[0])!.async('uint8array');
+      expect(Array.from(image.slice(0, 3))).toEqual([0xff, 0xd8, 0xff]);
     } finally {
       await cleanupTestHierarchy(page, hierarchy);
     }

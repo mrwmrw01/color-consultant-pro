@@ -1,5 +1,7 @@
 # Color Consultant Pro - MVP Deployment Checklist
 
+> **Superseded (2026-10-06):** see [DEPLOY.md](./DEPLOY.md) for current deployment instructions. This document describes an earlier setup and is kept for reference.
+
 **Date:** February 4, 2026  
 **Version:** MVP Ready  
 **Status:** Pre-Deployment

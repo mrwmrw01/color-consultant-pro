@@ -1,7 +1,8 @@
 /**
  * Reset to single admin account for testing
  * Deletes all users EXCEPT the primary data owner, then resets their password
- * Run with: npx tsx scripts/reset-admin-account.ts
+ * Run with:
+ *   ADMIN_EMAIL=... ADMIN_PASSWORD=... npx tsx --require dotenv/config scripts/reset-admin-account.ts
  */
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
@@ -9,10 +10,14 @@ import bcrypt from 'bcryptjs'
 const prisma = new PrismaClient()
 
 const ADMIN_ID = 'cmkklu7b50000qieeyvw720na'
-const ADMIN_EMAIL = 'weadtech@outlook.com'
-const ADMIN_PASSWORD = 'ColorAdmin2026!'
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
 
 async function main() {
+  if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+    throw new Error('Set ADMIN_EMAIL and ADMIN_PASSWORD')
+  }
+
   console.log('Resetting to single admin account...')
 
   // Delete all users EXCEPT the primary admin (cascade will clean up their data)
@@ -35,13 +40,13 @@ async function main() {
       firstName: 'Mark',
       lastName: 'Wead',
       password: hashedPassword,
-      role: 'ADMIN',
+      passwordChangedAt: new Date(), // signs out existing sessions
+      role: 'admin',
     }
   })
 
   console.log(`Admin account reset:`)
   console.log(`  Email:    ${admin.email}`)
-  console.log(`  Password: ${ADMIN_PASSWORD}`)
   console.log(`  Role:     ${admin.role}`)
   console.log('Done!')
 }
