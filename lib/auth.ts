@@ -59,13 +59,24 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/signin"
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id
         token.role = user.role
         token.firstName = user.firstName || undefined
         token.lastName = user.lastName || undefined
         token.companyName = user.companyName || undefined
+      }
+      // useSession().update() after a profile edit: reload from the database
+      // rather than trusting client-supplied values
+      if (trigger === "update" && token.id) {
+        const fresh = await prisma.user.findUnique({ where: { id: token.id } })
+        if (fresh) {
+          token.name = fresh.name
+          token.firstName = fresh.firstName || undefined
+          token.lastName = fresh.lastName || undefined
+          token.companyName = fresh.companyName || undefined
+        }
       }
       return token
     },

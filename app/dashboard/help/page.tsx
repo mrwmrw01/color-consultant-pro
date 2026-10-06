@@ -1,86 +1,87 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { 
-  Camera, 
-  Palette, 
-  FileText, 
-  FolderOpen, 
-  Tag, 
-  Download,
+import {
+  Camera,
+  Palette,
+  FileText,
+  FolderOpen,
+  Tag,
   BookOpen,
-  Video,
-  MessageCircle,
   ArrowLeft
 } from "lucide-react"
 import Link from "next/link"
 
 export default function HelpPage() {
+  const quickStart = [
+    { step: "Add a client", detail: "Clients → New Client, or Import Clients to load a CSV/Excel spreadsheet." },
+    { step: "Add the property", detail: "Open the client → Add Property and enter the address." },
+    { step: "Start a project", detail: "Open the property → New Project." },
+    { step: "Upload photos", detail: "In the project, click Upload Photos and pick photos from your phone or computer." },
+    { step: "Annotate colors", detail: "Click Annotate on a photo and tag each surface with its color, product line and sheen." },
+    { step: "Send the synopsis", detail: "In the project, click Edit Synopsis, review the draft, then Export DOCX for the painter." },
+  ]
+
   const helpCategories = [
     {
-      title: "Getting Started",
-      description: "Learn the basics of Color Consultant Pro",
-      icon: BookOpen,
+      title: "Clients & Projects",
+      description: "How work is organized",
+      icon: FolderOpen,
       topics: [
-        "Creating your first project",
-        "Setting up client information", 
-        "Organizing rooms and spaces",
-        "Understanding the dashboard"
+        { q: "How is information organized?", a: "Each client has one or more properties, and each property has its projects. Rooms are shared across all projects." },
+        { q: "Can I import my existing client list?", a: "Yes. On the Clients page choose Import Clients and upload a CSV or Excel file with columns such as name, contact, email and phone." },
+        { q: "How do I edit or remove records?", a: "Use the edit and delete buttons on each client, property or project card. Settings → Cleanup Tools lets you review and bulk-delete old records." },
       ]
     },
     {
-      title: "Photo Management",
-      description: "Upload, organize, and work with photos",
+      title: "Photos",
+      description: "Uploading and organizing photos",
       icon: Camera,
       topics: [
-        "Uploading photos to projects",
-        "Organizing photos by room",
-        "Photo quality best practices",
-        "Managing large photo collections"
+        { q: "What photos can I upload?", a: "JPG, PNG or WebP photos from a phone or camera; iPhones convert their photos automatically when uploading through the browser. Several photos can be uploaded at once." },
+        { q: "Why do uploads look smaller?", a: "Photos are optimized automatically into thumbnail, medium and large sizes so galleries load quickly. The detail stays sharp enough for annotation and reports." },
+        { q: "How do I move between photos?", a: "In the annotator use the previous/next arrows, or the ← and → keys." },
       ]
     },
     {
       title: "Color Annotation",
-      description: "Tag colors and create annotations", 
+      description: "Tagging colors on photos",
       icon: Tag,
       topics: [
-        "Using the annotation tools",
-        "Selecting color codes",
-        "Adding custom colors",
-        "Annotation best practices"
+        { q: "Which tools are available?", a: "The toolbar has a Color tag tool, a Pen for freehand marks and a Text tool, plus Undo, Redo and Clear all." },
+        { q: "How do I tag a color?", a: "Pick the Color tag tool, click the surface, then choose the color (search by name, code or manufacturer), surface type, product line and sheen. Add notes if needed." },
+        { q: "Do I need to save?", a: "No. Annotations and the annotated photo save automatically as you work." },
+        { q: "What does the amber warning mean?", a: "The product line does not match the room — for example an interior product on an exterior surface. Change the product, or confirm the override if it is intentional." },
       ]
     },
     {
       title: "Color Catalog",
-      description: "Work with paint colors and brands",
+      description: "Paint colors and brands",
       icon: Palette,
       topics: [
-        "Browsing color catalog",
-        "Adding custom colors",
-        "Managing color preferences",
-        "Understanding color codes"
+        { q: "Which colors are included?", a: "The full Sherwin-Williams and Benjamin Moore catalogs. Browse them on the Colors page." },
+        { q: "How do favorites and recent colors work?", a: "Star a color to add it to your favorites. Colors you used recently appear at the top of the color picker." },
+        { q: "A color is missing — can I add it?", a: "Yes. Use Add custom color in the annotator, or Settings → Color Catalog to manage manufacturers, edit colors or import a CSV." },
       ]
     },
     {
       title: "Synopsis & Reports",
-      description: "Generate professional color reports",
+      description: "The painter-ready color synopsis",
       icon: FileText,
       topics: [
-        "Creating color synopsis forms",
-        "Exporting to Excel/PDF",
-        "Customizing report templates",
-        "Sharing reports with clients"
+        { q: "How is the synopsis created?", a: "Edit Synopsis builds a first draft from your annotations, grouping rooms that share the same color, product and sheen." },
+        { q: "What can I change?", a: "Client details, the color summary, room labels and notes tags. Drag groups and columns to reorder them. Edits save automatically a few seconds after you stop typing." },
+        { q: "How do I start over?", a: "Reset rebuilds the draft from the current annotations. It replaces your edits, so you will be asked to confirm." },
+        { q: "How do I send it?", a: "Export DOCX downloads a Word document with the color tables and photos, ready to email to the painter." },
       ]
     },
     {
-      title: "Project Management",
-      description: "Organize and manage client projects",
-      icon: FolderOpen,
+      title: "Account & Data",
+      description: "Profile, password and backups",
+      icon: BookOpen,
       topics: [
-        "Project organization tips",
-        "Managing multiple clients",
-        "Project archiving",
-        "Data backup strategies"
+        { q: "How do I change my password?", a: "Open your profile from the menu (or Settings → Account) and use Change Password." },
+        { q: "How do I back up my work?", a: "Settings → Data Management → Export All Data downloads everything you have entered as a JSON file." },
+        { q: "Can others sign up?", a: "New accounts are created by the administrator; public sign-up is turned off." },
       ]
     }
   ]
@@ -103,45 +104,33 @@ export default function HelpPage() {
         </div>
       </div>
 
-      {/* Quick Links */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="p-6 text-center">
-            <Video className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-            <h3 className="font-semibold text-blue-900 mb-1">Video Tutorials</h3>
-            <p className="text-sm text-blue-700 mb-3">Watch step-by-step guides</p>
-            <Button size="sm" variant="outline" className="border-blue-300" disabled>
-              Coming Soon
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-green-200 bg-green-50">
-          <CardContent className="p-6 text-center">
-            <MessageCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-            <h3 className="font-semibold text-green-900 mb-1">Support Chat</h3>
-            <p className="text-sm text-green-700 mb-3">Get help from our team</p>
-            <Button size="sm" variant="outline" className="border-green-300" disabled>
-              Coming Soon
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-purple-200 bg-purple-50">
-          <CardContent className="p-6 text-center">
-            <Download className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-            <h3 className="font-semibold text-purple-900 mb-1">User Guide</h3>
-            <p className="text-sm text-purple-700 mb-3">Download PDF manual</p>
-            <Button size="sm" variant="outline" className="border-purple-300" disabled>
-              Coming Soon
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Quick Start */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader>
+          <CardTitle className="text-blue-900">Quick Start</CardTitle>
+          <CardDescription className="text-blue-700">
+            From a new client to a finished color synopsis
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ol className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+            {quickStart.map((item, index) => (
+              <li key={item.step} className="flex gap-3 text-sm">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
+                  {index + 1}
+                </span>
+                <span className="text-blue-900">
+                  <span className="font-semibold">{item.step}.</span> {item.detail}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </CardContent>
+      </Card>
 
       {/* Help Categories */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {helpCategories.map((category, index) => (
+        {helpCategories.map((category) => (
           <Card key={category.title} className="h-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -153,17 +142,14 @@ export default function HelpPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-2">
-                {category.topics.map((topic, topicIndex) => (
-                  <li key={topicIndex} className="flex items-center gap-2 text-sm text-gray-600">
-                    <div className="h-1 w-1 bg-gray-400 rounded-full flex-shrink-0" />
-                    {topic}
-                  </li>
+              <dl className="space-y-3">
+                {category.topics.map((topic) => (
+                  <div key={topic.q}>
+                    <dt className="text-sm font-medium text-gray-900">{topic.q}</dt>
+                    <dd className="text-sm text-gray-600 mt-0.5">{topic.a}</dd>
+                  </div>
                 ))}
-              </ul>
-              <Button variant="outline" size="sm" className="w-full mt-4" disabled>
-                View Details (Coming Soon)
-              </Button>
+              </dl>
             </CardContent>
           </Card>
         ))}
@@ -172,21 +158,10 @@ export default function HelpPage() {
       {/* Contact Information */}
       <Card className="bg-gray-50">
         <CardContent className="p-6">
-          <h3 className="font-semibold text-gray-900 mb-3">Need More Help?</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Can't find what you're looking for? Our support team is here to help you get the most out of Color Consultant Pro.
+          <h3 className="font-semibold text-gray-900 mb-2">Need More Help?</h3>
+          <p className="text-sm text-gray-600">
+            Contact your administrator for new accounts, access problems or anything not covered here.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button variant="outline" disabled>
-              Contact Support
-            </Button>
-            <Button variant="outline" disabled>
-              Request Feature
-            </Button>
-            <Button variant="outline" disabled>
-              Report Issue
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
