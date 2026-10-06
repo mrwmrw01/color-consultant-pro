@@ -46,6 +46,15 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: /profile-settings\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      // Changes the shared test user's profile and password, so it runs
+      // after every other test has finished signing in
+      name: 'account',
+      testMatch: /profile-settings\.spec\.ts/,
+      dependencies: ['chromium'],
       use: { ...devices['Desktop Chrome'] },
     },
   ],

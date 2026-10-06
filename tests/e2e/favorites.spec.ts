@@ -23,7 +23,7 @@ test.describe('Favorites', () => {
     try {
       // Upload photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to project
@@ -68,7 +68,7 @@ test.describe('Favorites', () => {
     try {
       // Upload photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to project
@@ -108,7 +108,7 @@ test.describe('Favorites', () => {
     try {
       // Upload photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to project
@@ -206,7 +206,7 @@ test.describe('Favorites', () => {
     try {
       // Upload photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to project
@@ -257,7 +257,7 @@ test.describe('Favorites', () => {
     try {
       // Upload photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to project
@@ -302,7 +302,7 @@ test.describe('Favorites', () => {
     try {
       // Upload photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to project

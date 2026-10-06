@@ -11,34 +11,29 @@ export class PhotoAnnotatorPage extends BasePage {
   }
 
   // Locators - Annotation Toolbar
+  // Toolbar buttons are icon-only; their titles are the stable handles
   get penToolButton() {
-    return this.page.getByRole('button', { name: /pen|draw/i });
+    return this.page.getByTitle('Pen tool');
   }
 
   get textToolButton() {
-    return this.page.getByRole('button', { name: /text/i });
+    return this.page.getByTitle('Text tool');
   }
 
   get colorTagButton() {
-    return this.page.getByRole('button', { name: /tag/i }).or(
-      this.page.locator('button:has(svg.lucide-tag)')
-    );
+    return this.page.getByTitle('Color tag tool');
   }
 
   get undoButton() {
-    return this.page.getByRole('button', { name: /undo/i }).or(
-      this.page.locator('button:has(svg.lucide-undo)')
-    );
+    return this.page.getByTitle('Undo last action');
   }
 
   get redoButton() {
-    return this.page.getByRole('button', { name: /redo/i }).or(
-      this.page.locator('button:has(svg.lucide-redo)')
-    );
+    return this.page.getByTitle('Redo last action');
   }
 
   get clearButton() {
-    return this.page.getByRole('button', { name: /clear/i });
+    return this.page.getByTitle('Clear all annotations');
   }
 
   // Canvas
@@ -58,8 +53,8 @@ export class PhotoAnnotatorPage extends BasePage {
       black: '#000000',
       gray: '#6b7280'
     };
-    // Look for button with this background color
-    return this.page.locator(`button[style*="${colorMap[color]}"]`);
+    // Inline styles serialize as rgb(), so match the swatch's title instead
+    return this.page.getByTitle(`Select ${colorMap[color]} color`);
   }
 
   // Annotations Summary
@@ -79,13 +74,11 @@ export class PhotoAnnotatorPage extends BasePage {
   }
 
   getEditButton(annotationIndex: number) {
-    return this.getAnnotationCard(annotationIndex).getByRole('button', { name: /edit/i });
+    return this.page.getByTitle('Edit annotation').nth(annotationIndex);
   }
 
   getDeleteButton(annotationIndex: number) {
-    return this.getAnnotationCard(annotationIndex).getByRole('button', { name: /delete/i }).or(
-      this.getAnnotationCard(annotationIndex).locator('button:has(svg.lucide-trash)')
-    );
+    return this.page.getByTitle('Delete annotation').nth(annotationIndex);
   }
 
   // Right Sidebar - Color Selection
@@ -247,13 +240,15 @@ export class PhotoAnnotatorPage extends BasePage {
     // Click edit button for annotation
     await this.getEditButton(index).click();
 
-    // Wait for dialog to open
-    await this.editDialog.waitFor({ state: 'visible' });
+    // Wait for dialog to open; the sidebar has fields with the same labels, so
+    // everything below is scoped to the dialog
+    const dialog = this.editDialog;
+    await dialog.waitFor({ state: 'visible' });
 
     // Fill in fields if provided
     if (options.surfaceType) {
-      await this.surfaceTypeSelect.click();
-      await this.page.getByRole('option', { name: new RegExp(options.surfaceType, 'i') }).click();
+      await dialog.getByLabel('Surface Type').click();
+      await this.page.getByRole('option', { name: options.surfaceType, exact: true }).click();
     }
 
     if (options.room) {
@@ -262,37 +257,34 @@ export class PhotoAnnotatorPage extends BasePage {
     }
 
     if (options.notes) {
-      await this.notesTextarea.fill(options.notes);
+      await dialog.getByLabel('Notes').fill(options.notes);
     }
 
-    // Save changes
-    await this.saveChangesButton.click();
+    // Save changes and wait for the server to accept them
+    const saved = this.page.waitForResponse(
+      (r) => r.url().includes('/annotations/') && ['PUT', 'PATCH'].includes(r.request().method())
+    );
+    await dialog.getByRole('button', { name: /save/i }).click();
+    const response = await saved;
+    if (!response.ok()) {
+      throw new Error(`Annotation update failed: ${response.status()}`);
+    }
 
     // Wait for dialog to close
-    await this.editDialog.waitFor({ state: 'hidden', timeout: 3000 });
-
-    // Wait for save to complete
-    await this.page.waitForTimeout(1000);
+    await dialog.waitFor({ state: 'hidden', timeout: 3000 });
   }
 
   async deleteAnnotation(index: number) {
-    const countBefore = await this.getAnnotationsCount();
-
-    // Click delete button
-    await this.getDeleteButton(index).click();
-
-    // Wait for deletion to process
-    await this.page.waitForTimeout(1000);
-
-    // Wait for count to decrease
-    await this.page.waitForFunction(
-      (expectedCount) => {
-        const countText = document.body.textContent?.match(/(\d+)\s+annotations?/i);
-        return countText ? parseInt(countText[1]) < expectedCount : false;
-      },
-      countBefore,
-      { timeout: 5000 }
+    const deleted = this.page.waitForResponse(
+      (r) => r.url().includes('/annotations/') && r.request().method() === 'DELETE'
     );
+    await this.getDeleteButton(index).click();
+    const response = await deleted;
+    if (!response.ok()) {
+      throw new Error(`Annotation delete failed: ${response.status()}`);
+    }
+    // Let the summary re-render with the new count
+    await this.page.waitForTimeout(300);
   }
 
   async undoLastAction() {

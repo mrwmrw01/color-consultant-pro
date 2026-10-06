@@ -26,7 +26,7 @@ test.describe('Color Annotation', () => {
     try {
       // Upload a photo first
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
 
       // Verify upload button is enabled (file and project selected)
       expect(await uploadPage.isUploadButtonEnabled()).toBe(true);
@@ -59,7 +59,7 @@ test.describe('Color Annotation', () => {
     try {
       // Upload photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Try to navigate to project photos
@@ -108,7 +108,7 @@ test.describe('Color Annotation', () => {
     try {
       // Upload photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('medium-photo.png'));
+      await uploadPage.uploadAndWait(getTestImagePath('medium-photo.png'));
       await page.waitForTimeout(2000);
 
       // Navigate to project
@@ -151,7 +151,7 @@ test.describe('Color Annotation', () => {
     try {
       // Upload photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to project
@@ -187,7 +187,7 @@ test.describe('Color Annotation', () => {
     try {
       // Upload photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to project
@@ -242,7 +242,7 @@ test.describe('Color Annotation', () => {
     try {
       // Upload photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to project
@@ -287,7 +287,7 @@ test.describe('Color Annotation', () => {
     try {
       // Upload photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to project
