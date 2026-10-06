@@ -8,7 +8,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!session?.user?.id) {
     redirect("/auth/signin")
   }
-  const role = (session.user as any).role ?? "user"
+  // Older admin accounts were saved as "ADMIN"
+  const role = String((session.user as any).role ?? "user").toLowerCase()
   if (!["admin", "consultant"].includes(role)) {
     redirect("/dashboard")
   }
