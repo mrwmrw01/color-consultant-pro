@@ -43,9 +43,11 @@ export async function POST(
     // Convert file to buffer
     const buffer = Buffer.from(await file.arrayBuffer())
     
-    // Generate S3 key for annotated photo
+    // The annotator always sends a JPEG; name it .jpg so it is stored and
+    // served as image/jpeg whatever the original photo's format
     const timestamp = Date.now()
-    const filename = `annotated-${timestamp}-${photo.originalFilename}`
+    const baseName = photo.originalFilename.replace(/\.[^.]+$/, "")
+    const filename = `annotated-${timestamp}-${baseName}.jpg`
     const cloud_storage_path = await uploadFile(buffer, filename)
 
     // Delete old annotated photo if it exists

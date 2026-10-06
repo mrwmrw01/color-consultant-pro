@@ -22,7 +22,8 @@ test.describe('Auto-save Functionality', () => {
     try {
       // Upload a photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
+      // A PNG original: the annotated copy is a JPEG either way
+      await uploadPage.uploadAndWait(getTestImagePath('medium-photo.png'));
       await page.waitForTimeout(2000);
 
       // Navigate to annotation page
@@ -51,6 +52,9 @@ test.describe('Auto-save Functionality', () => {
       const urlInfo = await (await page.request.get(`/api/photos/${photoId}/url`)).json();
       expect(urlInfo.hasAnnotatedVersion).toBe(true);
       expect(urlInfo.isAnnotated).toBe(true);
+      const annotated = await page.request.get(urlInfo.url);
+      expect(annotated.ok()).toBeTruthy();
+      expect(annotated.headers()['content-type']).toBe('image/jpeg');
     } finally {
       await cleanupTestHierarchy(page, hierarchy);
     }
