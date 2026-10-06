@@ -22,7 +22,7 @@ test.describe('Auto-save Functionality', () => {
     try {
       // Upload a photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to annotation page
@@ -30,28 +30,27 @@ test.describe('Auto-save Functionality', () => {
       await page.waitForLoadState('networkidle');
 
       const annotateLink = page.getByRole('link', { name: /annotate|add colors/i }).first();
-      const hasLink = await annotateLink.isVisible({ timeout: 3000 }).catch(() => false);
+      await expect(annotateLink).toBeVisible();
+      await annotateLink.click();
+      await page.waitForURL(/\/photos\/[^/]+\/annotate/);
+      const photoId = page.url().match(/\/photos\/([^/]+)\/annotate/)?.[1];
+      expect(photoId).toBeTruthy();
 
-      if (hasLink) {
-        await annotateLink.click();
-        await page.waitForLoadState('networkidle');
+      // Wait for annotation interface to be ready
+      await annotatorPage.waitForCanvas();
 
-        // Wait for annotation interface to be ready
-        await annotatorPage.waitForCanvas();
+      // Auto-save runs 500ms after an annotation is created
+      const savedPromise = page.waitForResponse(
+        (r) => r.url().includes(`/api/photos/${photoId}/save-annotated`) && r.request().method() === 'POST'
+      );
+      await annotatorPage.drawSimpleStroke();
+      const saved = await savedPromise;
+      expect(saved.ok()).toBeTruthy();
 
-        // Create an annotation by drawing on the canvas
-        await annotatorPage.drawSimpleStroke();
-        await page.waitForTimeout(1000);
-
-        // Auto-save should trigger after annotation is created
-        // Wait for auto-save to complete (happens 500ms after annotation)
-        await page.waitForTimeout(1500);
-
-        // Verify that the auto-save mechanism was invoked
-        // We can't directly test S3 upload, but we can verify no errors occurred
-        const hasErrors = await page.locator('text=/error|failed/i').isVisible({ timeout: 1000 }).catch(() => false);
-        expect(hasErrors).toBe(false);
-      }
+      // The photo now has an annotated version for the gallery
+      const urlInfo = await (await page.request.get(`/api/photos/${photoId}/url`)).json();
+      expect(urlInfo.hasAnnotatedVersion).toBe(true);
+      expect(urlInfo.isAnnotated).toBe(true);
     } finally {
       await cleanupTestHierarchy(page, hierarchy);
     }
@@ -66,7 +65,7 @@ test.describe('Auto-save Functionality', () => {
     try {
       // Upload a photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to annotation page
@@ -105,7 +104,7 @@ test.describe('Auto-save Functionality', () => {
     try {
       // Upload a photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to annotation page
@@ -155,7 +154,7 @@ test.describe('Auto-save Functionality', () => {
     try {
       // Upload a photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to annotation page
@@ -215,7 +214,7 @@ test.describe('Auto-save Functionality', () => {
     try {
       // Upload a photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to annotation page
@@ -266,7 +265,7 @@ test.describe('Auto-save Functionality', () => {
     try {
       // Upload a photo
       await uploadPage.navigateToUpload(hierarchy.project.id);
-      await uploadPage.uploadSingleFile(getTestImagePath('small-photo.jpg'));
+      await uploadPage.uploadAndWait(getTestImagePath('small-photo.jpg'));
       await page.waitForTimeout(2000);
 
       // Navigate to annotation page
