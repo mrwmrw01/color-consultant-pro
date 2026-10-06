@@ -1,5 +1,7 @@
 # Color Consultant Pro - Field Beta Deployment Guide
 
+> **Superseded (2026-10-06):** see [DEPLOY.md](./DEPLOY.md) for current deployment instructions. This document describes an earlier setup and is kept for reference.
+
 ## What Changed in This Release
 
 - ✅ Production build now passes cleanly (Next.js 14.2.35)

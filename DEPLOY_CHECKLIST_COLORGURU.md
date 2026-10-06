@@ -1,5 +1,7 @@
 # Deployment Checklist - www.colorgurudesign.com
 
+> **Superseded (2026-10-06):** see [DEPLOY.md](./DEPLOY.md) for current deployment instructions. This document describes an earlier setup and is kept for reference.
+
 Follow this step-by-step to deploy Color Consultant Pro.
 
 ---

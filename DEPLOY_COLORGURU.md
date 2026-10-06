@@ -1,5 +1,7 @@
 # Deploy Color Consultant Pro to www.colorgurudesign.com
 
+> **Superseded (2026-10-06):** see [DEPLOY.md](./DEPLOY.md) for current deployment instructions. This document describes an earlier setup and is kept for reference.
+
 Quick deployment guide for colorgurudesign.com (currently on Wix).
 
 ---

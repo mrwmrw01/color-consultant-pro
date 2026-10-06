@@ -1,5 +1,7 @@
 # Deploy Runbook — Color Consultant Pro → paint.weadtech.net
 
+> **Superseded (2026-10-06):** see [DEPLOY.md](./DEPLOY.md) for current deployment instructions. This document describes an earlier setup and is kept for reference.
+
 **Date:** 2026-10-01
 **Branch to ship:** `release/finish` (built on `main` = Field Beta v0.1 + all April–October work)
 **Status of this branch:** build ✅ · type-check ✅ · migrations ✅ · E2E (auth/projects/synopsis) ✅

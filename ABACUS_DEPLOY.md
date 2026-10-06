@@ -1,5 +1,7 @@
 # Abacus Deploy Checklist — Color Consultant Pro → paint.weadtech.net
 
+> **Superseded (2026-10-06):** see [DEPLOY.md](./DEPLOY.md) for current deployment instructions. This document describes an earlier setup and is kept for reference.
+
 **Version to ship:** `main` @ `12793eb` (tag `v1.0.0` + storage refactor + data restore)
 **Current production:** older build (no `/synopsis-draft` route, pre-storage-refactor)
 **Date:** 2026-10-05

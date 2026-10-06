@@ -1,5 +1,7 @@
 # Draggable Zoom Controls Deployment
 
+> **Superseded (2026-10-06):** see [DEPLOY.md](./DEPLOY.md) for current deployment instructions. This document describes an earlier setup and is kept for reference.
+
 **Date:** 2026-01-22
 **Time:** ~13:00 UTC
 **Status:** ✅ Deployed Successfully
