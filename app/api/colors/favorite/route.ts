@@ -42,6 +42,11 @@ export async function POST(request: NextRequest) {
       })
       return NextResponse.json({ favorited: false, message: 'Removed from favorites' })
     } else {
+      const color = await prisma.color.findUnique({ where: { id: colorId }, select: { id: true } })
+      if (!color) {
+        return NextResponse.json({ error: 'Color not found' }, { status: 404 })
+      }
+
       // Add to favorites
       await prisma.userFavoriteColor.create({
         data: {
