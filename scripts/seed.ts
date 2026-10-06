@@ -1,5 +1,6 @@
 /**
- * Seed reference data. Idempotent — runs on every `npm start`.
+ * Seed reference data. Idempotent — runs on every `npm start`, and a failure
+ * stops the start (a new site would otherwise come up without a login).
  *
  *   - Paint manufacturers
  *   - Sherwin-Williams + Benjamin Moore color catalog (data/Color Uploads.xlsx)
@@ -21,11 +22,10 @@ import { MANUFACTURERS, buildGlobalRooms, readColorCatalog } from './lib/referen
 const prisma = new PrismaClient();
 
 async function seedManufacturers(): Promise<number> {
-  const before = await prisma.manufacturer.count();
-  for (const m of MANUFACTURERS) {
-    await prisma.manufacturer.upsert({ where: { name: m.name }, update: {}, create: m });
-  }
-  return (await prisma.manufacturer.count()) - before;
+  // skipDuplicates covers both unique keys, so an existing manufacturer with
+  // another name but the same abbreviation is left alone instead of failing
+  const { count } = await prisma.manufacturer.createMany({ data: MANUFACTURERS, skipDuplicates: true });
+  return count;
 }
 
 async function seedColors(): Promise<number> {

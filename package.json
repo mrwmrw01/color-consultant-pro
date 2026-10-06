@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "node scripts/db-migrate.mjs && (npm run --silent db:seed || echo '[seed] failed; starting anyway') && next start",
+    "start": "node scripts/db-migrate.mjs && npm run --silent db:seed && next start",
     "postinstall": "prisma generate",
     "lint": "next lint",
     "lint:fix": "next lint --fix",

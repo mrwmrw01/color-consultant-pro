@@ -40,7 +40,9 @@ empty database, migrates and seeds itself, and passes the full end-to-end suite
    schema cannot be brought up to date.
 2. `scripts/seed.ts` adds anything missing: the paint manufacturers, the full
    Sherwin-Williams and Benjamin Moore catalog (5,634 colors), the room list,
-   and the admin from `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Existing rows are left alone.
+   and the admin from `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Existing rows are left
+   alone. If seeding fails (for example an `ADMIN_PASSWORD` under 8
+   characters), the app does not start: a new site would have no login.
 3. Next.js starts on `$PORT`. `/api/health` reports database, storage and
    rate-limiter status.
 
