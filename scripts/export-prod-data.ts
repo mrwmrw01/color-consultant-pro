@@ -133,14 +133,7 @@ async function main() {
   console.log(`✓ logged in as ${session.body.user.email}`)
 
   // 4. Dump collections
-  const collections = [
-    "clients",
-    "properties",
-    "projects",
-    "rooms",
-    "colors",
-    "synopsis",
-  ]
+  const collections = ["clients", "projects", "rooms", "colors", "synopsis"]
   const data: Record<string, any> = {}
   for (const name of collections) {
     const r = await request(jar, `${BASE}/api/${name}`)
@@ -150,6 +143,26 @@ async function main() {
     }
     data[name] = await save(`${name}.json`, r.body)
   }
+
+  // Properties are client-scoped: GET /api/properties?clientId=<id>
+  const clientsList: any[] = Array.isArray(data.clients)
+    ? data.clients
+    : (data.clients?.items ?? data.clients?.data ?? [])
+  const properties: any[] = []
+  for (const c of clientsList) {
+    const id = c.id
+    if (!id) continue
+    const r = await request(jar, `${BASE}/api/properties?clientId=${encodeURIComponent(id)}`)
+    if (r.status !== 200) {
+      console.warn(`  ⚠ properties for client ${id}: HTTP ${r.status}`)
+      continue
+    }
+    const list: any[] = Array.isArray(r.body)
+      ? r.body
+      : (r.body?.items ?? r.body?.data ?? [])
+    properties.push(...list)
+  }
+  data.properties = await save(`properties.json`, properties)
 
   // 5. Per-project photos come embedded in /api/projects; pull annotations per photo
   const projects: any[] =
